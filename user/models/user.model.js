@@ -15,14 +15,19 @@ const userSchema = new mongoose.Schema({
     type: String,
     required: true,
   },
+  role: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Role',
+  },
   refreshToken: {
     type: String,
     default: null,
   },
 }, {
-  timestamps: true, 
+  timestamps: true, // Ajoute les champs createdAt et updatedAt automatiquement
 });
 
+// Middleware pour hacher le mot de passe avant de sauvegarder l'utilisateur
 userSchema.pre('save', async function (next) {
   if (this.isModified('password') || this.isNew) {
     this.password = await bcrypt.hash(this.password, 10);
@@ -30,10 +35,12 @@ userSchema.pre('save', async function (next) {
   next();
 });
 
+// Méthode pour comparer le mot de passe
 userSchema.methods.comparePassword = function (candidatePassword) {
   return bcrypt.compare(candidatePassword, this.password);
 };
 
+// Méthode pour réinitialiser le refresh token
 userSchema.methods.resetRefreshToken = function () {
   this.refreshToken = null;
   return this.save();
