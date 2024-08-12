@@ -1,0 +1,19 @@
+{
+  "name": "edrm-user",
+  "version": "0.1.0",
+  "description": "edurance module for user management",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/florianduport/edrm-user.git"
+  },
+  "author": "florianduport",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/florianduport/edrm-user/issues"
+  },
+  "homepage": "https://github.com/florianduport/edrm-user#readme"
+}
