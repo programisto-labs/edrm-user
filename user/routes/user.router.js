@@ -101,7 +101,24 @@ router.get('/profile', restrictToOwner((req) => req.user.id), (req, res) => {
 
 // Route protégée pour mettre à jour le profil utilisateur (JWT et accès à son propre profil)
 router.patch('/profile', restrictToOwner((req) => req.user.id), auth.asyncHandler(async (req, res) => {
-  Object.assign(req.user, req.body);
+  const allowedUpdates = ['name', 'email', 'password']; // Champs que l'utilisateur peut mettre à jour
+  const updates = Object.keys(req.body);
+
+  // Filtre les champs interdits comme 'role' ou 'permissions'
+  const isValidOperation = updates.every(update => allowedUpdates.includes(update));
+
+  if (!isValidOperation) {
+    return res.status(400).json({ message: 'Invalid updates!' });
+  }
+
+  // Appliquer les mises à jour autorisées
+  updates.forEach(update => req.user[update] = req.body[update]);
+  
+  // Si l'utilisateur change son mot de passe, s'assurer que le hash est mis à jour
+  if (req.body.password) {
+    req.user.password = req.body.password;
+  }
+
   await req.user.save();
   res.json(req.user);
 }));
