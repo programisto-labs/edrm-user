@@ -1,13 +1,12 @@
 const express = require('express');
 const Role = require('../models/role.model');
+const { checkUserPermissions } = require('../middlewares/auth.middleware');
 const auth = require('endurance-core/lib/auth');
-const RouterBase = require('endurance-core/lib/router');
+const router = require('endurance-core/lib/router')();
 
-const router = RouterBase();
+const checkSuperAdmin = checkUserPermissions([], true); // Utilisation du middleware
 
-const checkSuperAdmin = auth.checkUserPermissions([], true); 
-
-RouterBase.autoWire(router, Role, 'Role');
+router.autoWire(Role, 'Role');
 
 router.post('/:roleId/assign-permissions', checkSuperAdmin, auth.asyncHandler(async (req, res) => {
   const { roleId } = req.params;

@@ -1,12 +1,9 @@
-const express = require('express');
 const Permission = require('../models/permission.model');
-const auth = require('endurance-core/lib/auth');
-const RouterBase = require('endurance-core/lib/router');
+const { checkUserPermissions } = require('../middlewares/auth.middleware');
+const router = require('endurance-core/lib/router')();
 
-const router = RouterBase();
+const checkSuperAdmin = checkUserPermissions([], true); 
 
-const checkSuperAdmin = auth.checkUserPermissions([], true); 
-
-RouterBase.autoWire(router, Permission, 'Permission');
+router.autoWire(Permission, 'Permission');
 
 module.exports = router;
