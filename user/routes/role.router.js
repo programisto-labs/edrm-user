@@ -1,8 +1,7 @@
-const express = require('express');
-const Role = require('../models/role.model');
-const { checkUserPermissions } = require('../middlewares/auth.middleware');
-const auth = require('endurance-core/lib/auth');
-const router = require('endurance-core/lib/router')();
+import Role from '../models/role.model';
+import { checkUserPermissions } from '../middlewares/auth.middleware';
+import auth from 'endurance-core/lib/auth';
+import router from 'endurance-core/lib/router';
 
 const checkSuperAdmin = checkUserPermissions([], true); // Utilisation du middleware
 
@@ -23,4 +22,4 @@ router.post('/:roleId/assign-permissions', checkSuperAdmin, auth.asyncHandler(as
   res.json({ message: 'Permissions assigned successfully', role });
 }));
 
-module.exports = router;
+export default router;

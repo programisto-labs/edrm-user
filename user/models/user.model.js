@@ -1,5 +1,5 @@
-const mongoose = require('mongoose');
-const bcrypt = require('bcrypt');
+import mongoose from 'mongoose';
+import bcrypt from 'bcrypt';
 
 const userSchema = new mongoose.Schema({
   email: {
@@ -21,6 +21,14 @@ const userSchema = new mongoose.Schema({
   },
   refreshToken: {
     type: String,
+    default: null,
+  },
+  resetToken: {
+    type: String,
+    default: null,
+  },
+  resetTokenExpiration: {
+    type: Date,
     default: null,
   },
 }, {
@@ -48,4 +56,4 @@ userSchema.methods.resetRefreshToken = function () {
 
 const User = mongoose.model('User', userSchema);
 
-module.exports = User;
+export default User;

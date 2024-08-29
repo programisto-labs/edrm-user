@@ -1,22 +1,66 @@
-const router = require('endurance-core/lib/router')();
-const auth = require('endurance-core/lib/auth');
-const { checkUserPermissions, restrictToOwner } = require('../middlewares/auth.middleware');
-const User = require('../models/user.model');
-const Role = require('../models/role.model');
+import router from 'endurance-core/lib/router';
+import auth from 'endurance-core/lib/auth';
+import emitter from 'endurance-core/lib/emitter';
+import { checkUserPermissions, restrictToOwner } from '../middlewares/auth.middleware';
+import User from '../models/user.model';
+import Role from '../models/role.model';
 
-router.post('/register', auth.asyncHandler(async (req, res) => {
+const userRouter = router();
+
+userRouter.post('/register', auth.asyncHandler(async (req, res) => {
   const user = new User(req.body);
   await user.save();
+  emitter.emit('userRegistered', user);
   res.status(201).json({ message: 'User registered successfully' });
 }));
 
-router.post('/login', auth.authenticateAndGenerateTokens());
+userRouter.post('/login', auth.authenticateAndGenerateTokens(), (req, res) => {
+  emitter.emit('userLoggedIn', req.user);
+  res.json({ message: 'User logged in successfully' });
+});
 
-router.get('/profile', restrictToOwner((req) => req.user.id), (req, res) => {
+userRouter.get('/profile', restrictToOwner((req) => req.user.id), (req, res) => {
   res.json(req.user);
 });
 
-router.patch('/profile', restrictToOwner((req) => req.user.id), auth.asyncHandler(async (req, res) => {
+userRouter.post('/request-password-reset', auth.asyncHandler(async (req, res) => {
+  const { email } = req.body;
+  const user = await User.findOne({ email });
+
+  if (!user) {
+    return res.status(404).json({ message: 'User not found' });
+  }
+
+  const resetToken = auth.generateToken({ id: user._id }, '10m');
+  user.resetToken = resetToken;
+  user.resetTokenExpiration = Date.now() + 10 * 60 * 1000; // 10 minutes from now
+  await user.save();
+
+  // Emit an event or send an email with the reset token
+  emitter.emit('passwordResetRequested', { user, resetToken });
+
+  res.json({ message: 'Password reset token generated', resetToken });
+}));
+
+userRouter.post('/reset-password', auth.asyncHandler(async (req, res) => {
+  const { resetToken, newPassword } = req.body;
+  const user = await User.findOne({ resetToken, resetTokenExpiration: { $gt: Date.now() } });
+
+  if (!user) {
+    return res.status(400).json({ message: 'Invalid or expired reset token' });
+  }
+
+  user.password = newPassword;
+  user.resetToken = null;
+  user.resetTokenExpiration = null;
+  await user.save();
+
+  emitter.emit('passwordReset', user);
+
+  res.json({ message: 'Password has been reset successfully' });
+}));
+
+userRouter.patch('/profile', restrictToOwner((req) => req.user.id), auth.asyncHandler(async (req, res) => {
   const allowedUpdates = ['name', 'email', 'password'];
   const updates = Object.keys(req.body);
 
@@ -33,15 +77,17 @@ router.patch('/profile', restrictToOwner((req) => req.user.id), auth.asyncHandle
   }
 
   await req.user.save();
+  emitter.emit('userProfileUpdated', req.user);
   res.json(req.user);
 }));
 
-router.delete('/profile', checkUserPermissions(['canDeleteUser']), auth.asyncHandler(async (req, res) => {
+userRouter.delete('/profile', checkUserPermissions(['canDeleteUser']), auth.asyncHandler(async (req, res) => {
   await req.user.remove();
+  emitter.emit('userDeleted', req.user);
   res.json({ message: 'User deleted successfully' });
 }));
 
-router.post('/assign-role', 
+userRouter.post('/assign-role', 
   auth.authenticateJWT(), 
   checkUserPermissions(['canAssignRoles'], true),  
   auth.asyncHandler(async (req, res) => {
@@ -60,12 +106,12 @@ router.post('/assign-role',
 
     user.role = roleId;
     await user.save();
-
+    emitter.emit('roleAssigned', { user, role });
     res.json({ message: 'Role assigned successfully', user });
 }));
 
-router.post('/refresh-token', auth.refreshJWT());
+userRouter.post('/refresh-token', auth.refreshJWT());
 
-router.post('/revoke-token', auth.revokeRefreshToken());
+userRouter.post('/revoke-token', auth.revokeRefreshToken());
 
-module.exports = router;
+export default userRouter;

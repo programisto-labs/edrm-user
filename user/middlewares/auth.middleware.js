@@ -1,5 +1,5 @@
-const User = require('../models/user.model');
-const auth = require('endurance-core/lib/auth');
+import User from '../models/user.model';
+import auth from 'endurance-core/lib/auth';
 
 const getUserByIdOrEmail = async (idOrEmail) => {
   if (typeof idOrEmail === 'object' && idOrEmail.email) {
@@ -26,10 +26,10 @@ const deleteRefreshToken = async (refreshToken) => {
 
 const checkUserPermissions = (requiredPermissions, bypassForSuperadmin = false) => {
   return [
-    auth.authenticateJWT(), // Vérifie d'abord que l'utilisateur est authentifié
+    auth.authenticateJWT(), 
     async (req, res, next) => {
       if (bypassForSuperadmin && req.user.role.name === 'superadmin') {
-        return next(); // Bypass pour le superadmin
+        return next(); 
       }
 
       const role = await req.user.populate('role').execPopulate();
@@ -47,7 +47,7 @@ const checkUserPermissions = (requiredPermissions, bypassForSuperadmin = false) 
 
 const restrictToOwner = (getResourceOwnerIdFn) => {
   return [
-    auth.authenticateJWT(), // Vérifie d'abord que l'utilisateur est authentifié
+    auth.authenticateJWT(), 
     async (req, res, next) => {
       try {
         const resourceOwnerId = await getResourceOwnerIdFn(req);
@@ -64,7 +64,6 @@ const restrictToOwner = (getResourceOwnerIdFn) => {
   ];
 };
 
-// Initialisation de la bibliothèque d'authentification avec les fonctions spécifiques au module user
 auth.initializeAuth({
   getUserById: getUserByIdOrEmail,
   validatePassword: validateUserPassword,
@@ -75,7 +74,7 @@ auth.initializeAuth({
   restrictToOwner,
 });
 
-module.exports = {
+export {
   checkUserPermissions,
   restrictToOwner,
 };
