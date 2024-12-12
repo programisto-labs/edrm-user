@@ -1,9 +1,9 @@
-import router from 'endurance-core/lib/router';
-import auth from 'endurance-core/lib/auth';
-import emitter from 'endurance-core/lib/emitter';
-import { checkUserPermissions, restrictToOwner } from '../middlewares/auth.middleware';
-import User from '../models/user.model';
-import Role from '../models/role.model';
+import router from 'endurance-core/lib/router.js';
+import auth from 'endurance-core/lib/auth.js';
+import emitter from 'endurance-core/lib/emitter.js';
+import { checkUserPermissions, restrictToOwner } from '../middlewares/auth.middleware.js';
+import User from '../models/user.model.js';
+import Role from '../models/role.model.js';
 
 const userRouter = router();
 

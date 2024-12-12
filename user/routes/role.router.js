@@ -1,7 +1,7 @@
-import Role from '../models/role.model';
-import { checkUserPermissions } from '../middlewares/auth.middleware';
-import auth from 'endurance-core/lib/auth';
-import router from 'endurance-core/lib/router';
+import Role from '../models/role.model.js';
+import { checkUserPermissions } from '../middlewares/auth.middleware.js';
+import auth from 'endurance-core/lib/auth.js';
+import router from 'endurance-core/lib/router.js';
 
 const checkSuperAdmin = checkUserPermissions([], true); // Utilisation du middleware
 

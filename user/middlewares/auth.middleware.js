@@ -1,5 +1,5 @@
-import User from '../models/user.model';
-import auth from 'endurance-core/lib/auth';
+import User from '../models/user.model.js';
+import auth from 'endurance-core/lib/auth.js';
 
 const getUserByIdOrEmail = async (idOrEmail) => {
   if (typeof idOrEmail === 'object' && idOrEmail.email) {
