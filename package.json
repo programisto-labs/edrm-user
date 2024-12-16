@@ -1,11 +1,13 @@
 {
   "name": "edrm-user",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "description": "edurance module for user management",
   "type": "module",
-  "main": "index.js",
+  "main": "app.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "nodemon ./bin/www",
+    "prod": "node ./bin/www",
+    "test": "mocha"
   },
   "repository": {
     "type": "git",
@@ -16,5 +18,12 @@
   "bugs": {
     "url": "https://github.com/florianduport/edrm-user/issues"
   },
-  "homepage": "https://github.com/florianduport/edrm-user#readme"
+  "homepage": "https://github.com/florianduport/edrm-user#readme",
+  "dependencies": {
+    "bcrypt": "^5.1.1",
+    "endurance-core": "^0.2.16",
+    "mongoose": "^8.8.4",
+    "passport-azure-ad": "^4.3.5",
+    "passport-azure-ad-oauth2": "^0.0.4"
+  }
 }

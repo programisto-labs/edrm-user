@@ -1,6 +1,6 @@
 import router from 'endurance-core/lib/router.js';
 import auth from 'endurance-core/lib/auth.js';
-import emitter from 'endurance-core/lib/emitter.js';
+import { emitter, eventTypes } from 'endurance-core/lib/emitter.js';
 import { checkUserPermissions, restrictToOwner } from '../middlewares/auth.middleware.js';
 import User from '../models/user.model.js';
 import Role from '../models/role.model.js';
@@ -14,10 +14,40 @@ userRouter.post('/register', auth.asyncHandler(async (req, res) => {
   res.status(201).json({ message: 'User registered successfully' });
 }));
 
-userRouter.post('/login', auth.authenticateAndGenerateTokens(), (req, res) => {
+userRouter.post('/login/local', auth.authenticateLocalAndGenerateTokens(), (req, res) => {
   emitter.emit('userLoggedIn', req.user);
   res.json({ message: 'User logged in successfully' });
 });
+
+if (process.env.LOGIN_AZURE_ACTIVATED === 'true') {
+
+  if (!process.env.AZURE_CLIENT_ID ||
+    !process.env.AZURE_CLIENT_SECRET ||
+    !process.env.AZURE_RESOURCE ||
+    !process.env.AZURE_TENANT ||
+    !process.env.AZURE_CALLBACK_URL ||
+    !process.env.LOGIN_CALLBACK_URL) {
+    console.error('Error: Azure environment variables are not set. Azure login routes will not be loaded.');
+  } else {
+
+    userRouter.get('/login/azure', auth.authenticateAzureAndGenerateTokens(), (req, res) => {
+      emitter.emit('userLoggedIn', req.user);
+      const loginCallbackUrl = process.env.LOGIN_CALLBACK_URL;
+      if (loginCallbackUrl) {
+        return res.redirect(loginCallbackUrl);
+      } else {
+        res.json({ message: 'User logged in successfully' });
+      }
+    });
+
+    userRouter.post('/login/azure/exchange', auth.generateAzureTokens(), (req, res) => {
+      emitter.emit('userLoggedIn', req.user);
+
+      res.json({ message: 'User logged in successfully' });
+
+    });
+  }
+}
 
 userRouter.get('/profile', restrictToOwner((req) => req.user.id), (req, res) => {
   res.json(req.user);
@@ -87,9 +117,9 @@ userRouter.delete('/profile', checkUserPermissions(['canDeleteUser']), auth.asyn
   res.json({ message: 'User deleted successfully' });
 }));
 
-userRouter.post('/assign-role', 
-  auth.authenticateJWT(), 
-  checkUserPermissions(['canAssignRoles'], true),  
+userRouter.post('/assign-role',
+  auth.authenticateJwt(),
+  checkUserPermissions(['canAssignRoles'], true),
   auth.asyncHandler(async (req, res) => {
     const { userId, roleId } = req.body;
 
@@ -108,9 +138,9 @@ userRouter.post('/assign-role',
     await user.save();
     emitter.emit('roleAssigned', { user, role });
     res.json({ message: 'Role assigned successfully', user });
-}));
+  }));
 
-userRouter.post('/refresh-token', auth.refreshJWT());
+userRouter.post('/refresh-token', auth.refreshJwt());
 
 userRouter.post('/revoke-token', auth.revokeRefreshToken());
 

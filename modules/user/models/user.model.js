@@ -9,11 +9,24 @@ const userSchema = new mongoose.Schema({
   },
   password: {
     type: String,
+    required: false,
+  },
+  firstname: {
+    type: String,
+    required: true,
+  },
+  lastname: {
+    type: String,
     required: true,
   },
   name: {
     type: String,
-    required: true,
+    get: function() {
+      return this._name || `${this.firstname} ${this.lastname}`;
+    },
+    set: function(value) {
+      this._name = value;
+    }
   },
   role: {
     type: mongoose.Schema.Types.ObjectId,

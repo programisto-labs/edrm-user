@@ -1,11 +1,11 @@
 import Role from '../models/role.model.js';
 import { checkUserPermissions } from '../middlewares/auth.middleware.js';
 import auth from 'endurance-core/lib/auth.js';
-import router from 'endurance-core/lib/router.js';
+import routerBase from 'endurance-core/lib/router.js';
 
 const checkSuperAdmin = checkUserPermissions([], true); // Utilisation du middleware
-
-router.autoWire(Role, 'Role');
+const router = routerBase({requireDb: true});
+router.autoWire(Role, 'Role', checkSuperAdmin);
 
 router.post('/:roleId/assign-permissions', checkSuperAdmin, auth.asyncHandler(async (req, res) => {
   const { roleId } = req.params;
