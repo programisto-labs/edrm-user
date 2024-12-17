@@ -1,9 +1,8 @@
 import Role from '../models/role.model.js';
-import { checkUserPermissions } from '../middlewares/auth.middleware.js';
 import auth from 'endurance-core/lib/auth.js';
 import routerBase from 'endurance-core/lib/router.js';
 
-const checkSuperAdmin = checkUserPermissions([], true); // Utilisation du middleware
+const checkSuperAdmin = auth.checkUserPermissions([], true); 
 const router = routerBase({requireDb: true});
 router.autoWire(Role, 'Role', checkSuperAdmin);
 

@@ -1,23 +1,74 @@
 import router from 'endurance-core/lib/router.js';
 import auth from 'endurance-core/lib/auth.js';
 import { emitter, eventTypes } from 'endurance-core/lib/emitter.js';
-import { checkUserPermissions, restrictToOwner } from '../middlewares/auth.middleware.js';
 import User from '../models/user.model.js';
 import Role from '../models/role.model.js';
 
 const userRouter = router();
 
-userRouter.post('/register', auth.asyncHandler(async (req, res) => {
+
+userRouter.get('/auth-methods', async (req, res) => {
+  const authMethods = {
+    local: process.env.LOGIN_LOCAL_ACTIVATED === 'true',
+    azure: process.env.LOGIN_AZURE_ACTIVATED === 'true'
+  };
+  res.json({ authMethods });
+});
+
+userRouter.get('/check-auth', auth.authenticateJwt(), async (req, res) => {
+  res.json({ result: 'ok' });
+});
+
+userRouter.post('/register', async (req, res) => {
   const user = new User(req.body);
   await user.save();
-  emitter.emit('userRegistered', user);
+  emitter.emit(eventTypes.userRegistered, user);
   res.status(201).json({ message: 'User registered successfully' });
-}));
-
-userRouter.post('/login/local', auth.authenticateLocalAndGenerateTokens(), (req, res) => {
-  emitter.emit('userLoggedIn', req.user);
-  res.json({ message: 'User logged in successfully' });
 });
+
+if(process.env.LOGIN_LOCAL_ACTIVATED){
+  userRouter.post('/login/local', auth.authenticateLocalAndGenerateTokens(), (req, res) => {
+    emitter.emit(eventTypes.userLoggedIn, req.user);
+    res.json({ message: 'User logged in successfully' });
+  });
+
+  userRouter.post('/request-password-reset',async (req, res) => {
+    const { email } = req.body;
+    const user = await User.findOne({ email });
+  
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+  
+    const resetToken = auth.generateToken({ id: user._id }, '10m');
+    user.resetToken = resetToken;
+    user.resetTokenExpiration = Date.now() + 10 * 60 * 1000; // 10 minutes from now
+    await user.save();
+  
+    // Emit an event or send an email with the reset token
+    emitter.emit('passwordResetRequested', { user, resetToken });
+  
+    res.json({ message: 'Password reset token generated', resetToken });
+  });
+  
+  userRouter.post('/reset-password', async (req, res) => {
+    const { resetToken, newPassword } = req.body;
+    const user = await User.findOne({ resetToken, resetTokenExpiration: { $gt: Date.now() } });
+  
+    if (!user) {
+      return res.status(400).json({ message: 'Invalid or expired reset token' });
+    }
+  
+    user.password = newPassword;
+    user.resetToken = null;
+    user.resetTokenExpiration = null;
+    await user.save();
+  
+    emitter.emit('passwordReset', user);
+  
+    res.json({ message: 'Password has been reset successfully' });
+  });
+}
 
 if (process.env.LOGIN_AZURE_ACTIVATED === 'true') {
 
@@ -25,14 +76,13 @@ if (process.env.LOGIN_AZURE_ACTIVATED === 'true') {
     !process.env.AZURE_CLIENT_SECRET ||
     !process.env.AZURE_RESOURCE ||
     !process.env.AZURE_TENANT ||
-    !process.env.AZURE_CALLBACK_URL ||
-    !process.env.LOGIN_CALLBACK_URL) {
+    !process.env.AZURE_CALLBACK_URL) {
     console.error('Error: Azure environment variables are not set. Azure login routes will not be loaded.');
   } else {
 
     userRouter.get('/login/azure', auth.authenticateAzureAndGenerateTokens(), (req, res) => {
-      emitter.emit('userLoggedIn', req.user);
-      const loginCallbackUrl = process.env.LOGIN_CALLBACK_URL;
+      emitter.emit(eventTypes.userLoggedIn, req.user);
+      const loginCallbackUrl = process.env.AZURE_CALLBACK_URL;
       if (loginCallbackUrl) {
         return res.redirect(loginCallbackUrl);
       } else {
@@ -41,7 +91,7 @@ if (process.env.LOGIN_AZURE_ACTIVATED === 'true') {
     });
 
     userRouter.post('/login/azure/exchange', auth.generateAzureTokens(), (req, res) => {
-      emitter.emit('userLoggedIn', req.user);
+      emitter.emit(eventTypes.userLoggedIn, req.user);
 
       res.json({ message: 'User logged in successfully' });
 
@@ -49,48 +99,11 @@ if (process.env.LOGIN_AZURE_ACTIVATED === 'true') {
   }
 }
 
-userRouter.get('/profile', restrictToOwner((req) => req.user.id), (req, res) => {
+userRouter.get('/profile', auth.restrictToOwner((req) => req.user.id), (req, res) => {
   res.json(req.user);
 });
 
-userRouter.post('/request-password-reset', auth.asyncHandler(async (req, res) => {
-  const { email } = req.body;
-  const user = await User.findOne({ email });
-
-  if (!user) {
-    return res.status(404).json({ message: 'User not found' });
-  }
-
-  const resetToken = auth.generateToken({ id: user._id }, '10m');
-  user.resetToken = resetToken;
-  user.resetTokenExpiration = Date.now() + 10 * 60 * 1000; // 10 minutes from now
-  await user.save();
-
-  // Emit an event or send an email with the reset token
-  emitter.emit('passwordResetRequested', { user, resetToken });
-
-  res.json({ message: 'Password reset token generated', resetToken });
-}));
-
-userRouter.post('/reset-password', auth.asyncHandler(async (req, res) => {
-  const { resetToken, newPassword } = req.body;
-  const user = await User.findOne({ resetToken, resetTokenExpiration: { $gt: Date.now() } });
-
-  if (!user) {
-    return res.status(400).json({ message: 'Invalid or expired reset token' });
-  }
-
-  user.password = newPassword;
-  user.resetToken = null;
-  user.resetTokenExpiration = null;
-  await user.save();
-
-  emitter.emit('passwordReset', user);
-
-  res.json({ message: 'Password has been reset successfully' });
-}));
-
-userRouter.patch('/profile', restrictToOwner((req) => req.user.id), auth.asyncHandler(async (req, res) => {
+userRouter.patch('/profile', auth.restrictToOwner((req) => req.user.id), auth.asyncHandler(async (req, res) => {
   const allowedUpdates = ['name', 'email', 'password'];
   const updates = Object.keys(req.body);
 
@@ -107,11 +120,11 @@ userRouter.patch('/profile', restrictToOwner((req) => req.user.id), auth.asyncHa
   }
 
   await req.user.save();
-  emitter.emit('userProfileUpdated', req.user);
+  emitter.emit(eventTypes.userProfileUpdated, req.user);
   res.json(req.user);
 }));
 
-userRouter.delete('/profile', checkUserPermissions(['canDeleteUser']), auth.asyncHandler(async (req, res) => {
+userRouter.delete('/profile', auth.checkUserPermissions(['canDeleteUser']), auth.asyncHandler(async (req, res) => {
   await req.user.remove();
   emitter.emit('userDeleted', req.user);
   res.json({ message: 'User deleted successfully' });
@@ -119,7 +132,7 @@ userRouter.delete('/profile', checkUserPermissions(['canDeleteUser']), auth.asyn
 
 userRouter.post('/assign-role',
   auth.authenticateJwt(),
-  checkUserPermissions(['canAssignRoles'], true),
+  auth.checkUserPermissions(['canAssignRoles'], true),
   auth.asyncHandler(async (req, res) => {
     const { userId, roleId } = req.body;
 
@@ -136,7 +149,7 @@ userRouter.post('/assign-role',
 
     user.role = roleId;
     await user.save();
-    emitter.emit('roleAssigned', { user, role });
+    emitter.emit(eventTypes.roleAssigned, { user, role });
     res.json({ message: 'Role assigned successfully', user });
   }));
 

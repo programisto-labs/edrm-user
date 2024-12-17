@@ -11,6 +11,15 @@ import crypto from 'crypto';
 const secret = process.env.JWT_SECRET || 'default_secret';
 const refreshSecret = process.env.JWT_REFRESH_SECRET || 'default_refresh_secret';
 
+
+passport.serializeUser(function(user, done) {
+  done(null, user);
+});
+
+passport.deserializeUser(function(user, done) {
+  done(null, user);
+});
+
 const asyncHandler = (fn) => (req, res, next) => {
   Promise.resolve(fn(req, res, next)).catch(next);
 };
@@ -202,7 +211,9 @@ const configureJwtStrategy = () => {
       },
       async (jwtPayload, done) => {
         try {
-          const user = await getUserById(jwtPayload.id);
+          console.log(jwtPayload);
+          const email = jwtPayload.email;
+          const user = await getUserByIdOrEmail({ email});
           if (user) {
             return done(null, user);
           } else {
@@ -215,6 +226,8 @@ const configureJwtStrategy = () => {
     )
   );
 };
+
+
 
 const configureLocalStrategy = () => {
   passport.use(
@@ -311,7 +324,7 @@ const revokeRefreshToken = () => {
 };
 
 const authenticateJwt = () => {
-  return passport.authenticate('jwt', { session: false });
+  return passport.authenticate('jwt', { failureMessage: true });;
 };
 
 const authorize = (checkPermissionsFn) => {
@@ -352,12 +365,12 @@ const handleAuthError = (err, req, res, next) => {
 
 auth.initializeAuth({
   getUserFn: getUserByIdOrEmail,
+  checkUserPermissionsFn: checkUserPermissions,
+  restrictToOwnerFn: restrictToOwner,
   validatePasswordFn: validateUserPassword,
   storeRefreshTokenFn: storeUserRefreshToken,
   getStoredRefreshTokenFn: getUserByRefreshToken,
   deleteStoredRefreshTokenFn: deleteRefreshToken,
-  checkUserPermissionsFn: checkUserPermissions,
-  restrictToOwnerFn: restrictToOwner,
   createNewUserFn: createNewUser,
   authenticateLocalAndGenerateTokensFn: authenticateLocalAndGenerateTokens,
   authenticateAzureAndGenerateTokensFn: authenticateAzureAndGenerateTokens,
