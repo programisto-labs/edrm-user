@@ -1,12 +1,12 @@
 import Role from '../models/role.model.js';
-import auth from 'endurance-core/lib/auth.js';
+import { accessControl } from 'endurance-core/lib/auth.js';
 import routerBase from 'endurance-core/lib/router.js';
 
-const checkSuperAdmin = auth.checkUserPermissions([], true); 
+const checkSuperAdmin = accessControl.checkUserPermissions([], true); 
 const router = routerBase({requireDb: true});
 router.autoWire(Role, 'Role', checkSuperAdmin);
 
-router.post('/:roleId/assign-permissions', checkSuperAdmin, auth.asyncHandler(async (req, res) => {
+router.post('/:roleId/assign-permissions', checkSuperAdmin, async (req, res) => {
   const { roleId } = req.params;
   const { permissions } = req.body;
 
@@ -19,6 +19,6 @@ router.post('/:roleId/assign-permissions', checkSuperAdmin, auth.asyncHandler(as
   await role.save();
 
   res.json({ message: 'Permissions assigned successfully', role });
-}));
+});
 
 export default router;

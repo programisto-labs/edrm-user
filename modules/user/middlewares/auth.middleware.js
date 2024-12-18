@@ -1,5 +1,5 @@
 import User from '../models/user.model.js';
-import auth from 'endurance-core/lib/auth.js';
+import { auth, accessControl } from 'endurance-core/lib/auth.js';
 import jwt from 'jsonwebtoken';
 import passport from 'passport';
 import { Strategy as JwtStrategy, ExtractJwt } from 'passport-jwt';
@@ -11,12 +11,11 @@ import crypto from 'crypto';
 const secret = process.env.JWT_SECRET || 'default_secret';
 const refreshSecret = process.env.JWT_REFRESH_SECRET || 'default_refresh_secret';
 
-
-passport.serializeUser(function(user, done) {
+passport.serializeUser(function (user, done) {
   done(null, user);
 });
 
-passport.deserializeUser(function(user, done) {
+passport.deserializeUser(function (user, done) {
   done(null, user);
 });
 
@@ -60,7 +59,7 @@ const deleteRefreshToken = async (refreshToken) => {
 
 const checkUserPermissions = (requiredPermissions, bypassForSuperadmin = false) => {
   return [
-    auth.authenticateJwt(),
+    accessControl.isAuthenticated(),
     async (req, res, next) => {
       if (bypassForSuperadmin && req.user.role.name === 'superadmin') {
         return next();
@@ -81,7 +80,7 @@ const checkUserPermissions = (requiredPermissions, bypassForSuperadmin = false) 
 
 const restrictToOwner = (getResourceOwnerIdFn) => {
   return [
-    auth.authenticateJwt(),
+    accessControl.isAuthenticated(),
     async (req, res, next) => {
       try {
         const resourceOwnerId = await getResourceOwnerIdFn(req);
@@ -98,7 +97,6 @@ const restrictToOwner = (getResourceOwnerIdFn) => {
   ];
 };
 
-
 const storeRefreshToken = async (email, refreshToken) => {
   try {
     const user = await User.findOne({ email });
@@ -111,7 +109,6 @@ const storeRefreshToken = async (email, refreshToken) => {
     throw new Error(`Error storing refresh token: ${err.message}`);
   }
 };
-
 
 const authenticateLocalAndGenerateTokens = () => {
   return asyncHandler((req, res, next) => {
@@ -213,7 +210,7 @@ const configureJwtStrategy = () => {
         try {
           console.log(jwtPayload);
           const email = jwtPayload.email;
-          const user = await getUserByIdOrEmail({ email});
+          const user = await getUserByIdOrEmail({ email });
           if (user) {
             return done(null, user);
           } else {
@@ -227,8 +224,6 @@ const configureJwtStrategy = () => {
   );
 };
 
-
-
 const configureLocalStrategy = () => {
   passport.use(
     new LocalStrategy(
@@ -238,8 +233,8 @@ const configureLocalStrategy = () => {
       },
       async (email, password, done) => {
         try {
-          const user = await getUserById({ email });
-          if (!user || !(await validatePassword(user, password))) {
+          const user = await getUserByIdOrEmail({ email });
+          if (!user || !(await validateUserPassword(user, password))) {
             return done(null, false, { message: 'Incorrect email or password.' });
           }
           return done(null, user);
@@ -252,7 +247,6 @@ const configureLocalStrategy = () => {
 };
 
 const configureAzureStrategy = () => {
-
   passport.use(new AzureAdOAuth2Strategy({
     clientID: process.env.AZURE_CLIENT_ID,
     clientSecret: process.env.AZURE_CLIENT_SECRET,
@@ -274,7 +268,6 @@ const configureAzureStrategy = () => {
         return done(err, null);
       }
     }));
-
 };
 
 const refreshJwt = () => {
@@ -286,12 +279,12 @@ const refreshJwt = () => {
     }
 
     try {
-      const storedRefreshToken = await getStoredRefreshToken(refreshToken);
+      const storedRefreshToken = await getUserByRefreshToken(refreshToken);
       if (!storedRefreshToken) {
         return res.status(401).json({ message: 'Invalid refresh token' });
       }
 
-      const user = await getUserById(storedRefreshToken.userId);
+      const user = await getUserByIdOrEmail(storedRefreshToken.userId);
       if (!user) {
         return res.status(401).json({ message: 'Invalid refresh token' });
       }
@@ -305,7 +298,6 @@ const refreshJwt = () => {
   });
 };
 
-
 const revokeRefreshToken = () => {
   return asyncHandler(async (req, res) => {
     const { refreshToken } = req.body;
@@ -315,7 +307,7 @@ const revokeRefreshToken = () => {
     }
 
     try {
-      await deleteStoredRefreshToken(refreshToken);
+      await deleteRefreshToken(refreshToken);
       return res.status(200).json({ message: 'Refresh token revoked' });
     } catch (err) {
       return res.status(500).json({ message: 'Error revoking refresh token', error: err.message });
@@ -323,8 +315,8 @@ const revokeRefreshToken = () => {
   });
 };
 
-const authenticateJwt = () => {
-  return passport.authenticate('jwt', { failureMessage: true });;
+const isAuthenticated = () => {
+  return passport.authenticate('jwt', { failureMessage: true });
 };
 
 const authorize = (checkPermissionsFn) => {
@@ -362,7 +354,6 @@ const handleAuthError = (err, req, res, next) => {
   }
 };
 
-
 auth.initializeAuth({
   getUserFn: getUserByIdOrEmail,
   checkUserPermissionsFn: checkUserPermissions,
@@ -380,7 +371,7 @@ auth.initializeAuth({
   configureAzureStrategyFn: configureAzureStrategy,
   refreshJwtFn: refreshJwt,
   revokeRefreshTokenFn: revokeRefreshToken,
-  authenticateJwtFn: authenticateJwt,
+  authenticateJwtFn: isAuthenticated,
   authorizeFn: authorize,
   generateRefreshTokenFn: generateRefreshToken,
   generateTokenFn: generateToken,
