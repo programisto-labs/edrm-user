@@ -11,6 +11,6 @@ const permissionSchema = new mongoose.Schema({
   },
 });
 
-const Permission = mongoose.model('Permission', permissionSchema);
+const Permission = mongoose.model('Permission', permissionSchema, 'permissions');
 
 export default Permission;

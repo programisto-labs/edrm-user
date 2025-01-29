@@ -67,6 +67,6 @@ userSchema.methods.resetRefreshToken = function () {
   return this.save();
 };
 
-const User = mongoose.model('User', userSchema);
+const User = mongoose.model('User', userSchema, 'users');
 
 export default User;

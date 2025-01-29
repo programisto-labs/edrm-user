@@ -164,8 +164,12 @@ const authenticateAzureAndGenerateTokens = () => {
 };
 
 const generateAzureTokens = (req, res) => {
-  return asyncHandler((req, res, next) => {
+  return asyncHandler(async (req, res, next) => {
+
+    console.log(req.body);
+
     passport.authenticate('azure_ad_oauth2', { session: false }, async (err, user, info) => {
+      
       if (err || !user) {
         console.error('Authentication error:', err);
         return res.status(400).json({
@@ -246,6 +250,42 @@ const configureLocalStrategy = () => {
   );
 };
 
+const configureAzureJwtStrategy = () => {
+  passport.use(
+    'azure_jwt', // Nom de la stratégie
+    new JwtStrategy(
+      {
+        jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
+        secretOrKeyProvider: (request, rawJwtToken, done) => {
+          // Utilisez la clé publique d'Azure AD
+          console.log("HHHHHH")
+          const secretOrKey = process.env.AZURE_PUBLIC_KEY;
+          if (!secretOrKey) {
+            return done(new Error('Secret or key is not provided'), null);
+          }
+          done(null, secretOrKey);
+        },
+        issuer: `https://sts.windows.net/${process.env.AZURE_TENANT}/`, // Assurez-vous que l'émetteur correspond
+        audience: process.env.AZURE_CLIENT_ID, // Votre client ID Azure
+      },
+      async (jwtPayload, done) => {
+        try {
+          const user = await User.findOne({ email: jwtPayload.upn });
+          if (user) {
+            return done(null, user);
+          } else {
+            return done(null, false);
+          }
+        } catch (err) {
+          console.log(err)
+          return done(err, false);
+        }
+      }
+    )
+  );
+};
+
+
 const configureAzureStrategy = () => {
   passport.use(new AzureAdOAuth2Strategy({
     clientID: process.env.AZURE_CLIENT_ID,
@@ -257,12 +297,12 @@ const configureAzureStrategy = () => {
   },
     async function (accessToken, refresh_token, params, profile, done) {
       var waadProfile = jwt.decode(params.id_token);
-
       try {
         const user = await User.findOne({ email: waadProfile.upn });
         if (!user) {
           return done(new Error('user not created'), null);
         }
+        console.log(user);
         done(null, user);
       } catch (err) {
         return done(err, null);
@@ -316,7 +356,7 @@ const revokeRefreshToken = () => {
 };
 
 const isAuthenticated = () => {
-  return passport.authenticate('jwt', { failureMessage: true });
+  return passport.authenticate(['jwt', 'azure_jwt'], { session: false });
 };
 
 const authorize = (checkPermissionsFn) => {
@@ -369,6 +409,7 @@ auth.initializeAuth({
   configureJwtStrategyFn: configureJwtStrategy,
   configureLocalStrategyFn: configureLocalStrategy,
   configureAzureStrategyFn: configureAzureStrategy,
+  configureAzureJwtStrategyFn: configureAzureJwtStrategy,
   refreshJwtFn: refreshJwt,
   revokeRefreshTokenFn: revokeRefreshToken,
   authenticateJwtFn: isAuthenticated,

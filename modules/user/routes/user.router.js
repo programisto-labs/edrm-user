@@ -19,6 +19,12 @@ userRouter.get('/check-auth', accessControl.isAuthenticated(), async (req, res) 
   res.json({ result: 'ok' });
 });
 
+userRouter.get('/find', async (req, res) => {
+  const user = await User.findOne({email: "f.duport@programisto.fr"});
+  res.json(user);
+});
+
+
 userRouter.post('/register', async (req, res) => {
   const user = new User(req.body);
   await user.save();
