@@ -1,6 +1,6 @@
 {
   "name": "edrm-user",
-  "version": "0.2.6",
+  "version": "0.2.7",
   "description": "edurance module for user management",
   "type": "module",
   "main": "app.js",
@@ -21,9 +21,11 @@
   "homepage": "https://github.com/florianduport/edrm-user#readme",
   "dependencies": {
     "bcrypt": "^5.1.1",
-    "endurance-core": "^0.2.21",
-    "mongoose": "8.9.5",
     "passport-azure-ad": "^4.3.5",
     "passport-azure-ad-oauth2": "^0.0.4"
+  },
+  "devDependencies": {
+    "endurance-core": "^0.2.21",
+    "mongoose": "8.9.5"
   }
 }
