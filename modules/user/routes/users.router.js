@@ -20,7 +20,8 @@ userRouter.get('/check-auth', accessControl.isAuthenticated(), async (req, res) 
 });
 
 userRouter.get('/find', async (req, res) => {
-  const user = await User.findOne({email: "f.duport@programisto.fr"});
+  const { email } = req.query;
+  const user = await User.findOne({ email });
   res.json(user);
 });
 
