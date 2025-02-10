@@ -25,9 +25,9 @@ const asyncHandler = (fn) => (req, res, next) => {
 
 const getUserByIdOrEmail = async (idOrEmail) => {
   if (typeof idOrEmail === 'object' && idOrEmail.email) {
-    return await User.findOne({ email: idOrEmail.email });
+    return await User.findOne({ email: idOrEmail.email }).select('+password');
   }
-  return await User.findById(idOrEmail);
+  return await User.findById(idOrEmail).select('+password');
 };
 
 const createNewUser = async (userData) => {
@@ -238,6 +238,7 @@ const configureLocalStrategy = () => {
       async (email, password, done) => {
         try {
           const user = await getUserByIdOrEmail({ email });
+          console.log(user);
           if (!user || !(await validateUserPassword(user, password))) {
             return done(null, false, { message: 'Incorrect email or password.' });
           }
@@ -258,7 +259,6 @@ const configureAzureJwtStrategy = () => {
         jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
         secretOrKeyProvider: (request, rawJwtToken, done) => {
           // Utilisez la clé publique d'Azure AD
-          console.log("HHHHHH")
           const secretOrKey = process.env.AZURE_PUBLIC_KEY;
           if (!secretOrKey) {
             return done(new Error('Secret or key is not provided'), null);

@@ -10,6 +10,7 @@ const userSchema = new mongoose.Schema({
   password: {
     type: String,
     required: false,
+    select: false // Password won't be returned in queries by default
   },
   firstname: {
     type: String,
