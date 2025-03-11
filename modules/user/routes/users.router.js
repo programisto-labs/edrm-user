@@ -1,6 +1,6 @@
-import router from 'endurance-core/lib/router.js';
-import { auth, accessControl } from 'endurance-core/lib/auth.js';
-import { emitter, eventTypes } from 'endurance-core/lib/emitter.js';
+import router from 'endurance-core/dist/router.js';
+import { auth, accessControl } from 'endurance-core/dist/auth.js';
+import { emitter, eventTypes } from 'endurance-core/dist/emitter.js';
 import User from '../models/user.model.js';
 import Role from '../models/role.model.js';
 

@@ -1,5 +1,5 @@
 import User from '../models/user.model.js';
-import { auth, accessControl } from 'endurance-core/lib/auth.js';
+import { auth, accessControl } from 'endurance-core/dist/auth.js';
 import jwt from 'jsonwebtoken';
 import passport from 'passport';
 import { Strategy as JwtStrategy, ExtractJwt } from 'passport-jwt';
@@ -169,7 +169,7 @@ const generateAzureTokens = (req, res) => {
     console.log(req.body);
 
     passport.authenticate('azure_ad_oauth2', { session: false }, async (err, user, info) => {
-      
+
       if (err || !user) {
         console.error('Authentication error:', err);
         return res.status(400).json({
