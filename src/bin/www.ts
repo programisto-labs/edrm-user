@@ -6,7 +6,7 @@
 
 import path from 'path';
 import fs from 'fs';
-import { createServer } from 'http';
+import { createServer, Server } from 'http';
 import debugLib from 'debug';
 
 import { fileURLToPath } from 'url';
@@ -14,7 +14,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const localAppPath = path.join(__dirname, '../lib/app.js');
-const coreAppPath = 'endurance-core/dist/app.js';
+const coreAppPath = 'endurance-core/dist/lib/app.js';
 
 const appModule = fs.existsSync(localAppPath) ? await import(localAppPath) : await import(coreAppPath);
 const app = appModule.default;
@@ -24,14 +24,14 @@ const debug = debugLib('demo:server');
  * Get port from environment and store in Express.
  */
 
-const port = normalizePort(process.env.SERVER_PORT || '3000');
+const port = normalizePort(process.env.PORT || '3000');
 app.set('port', port);
 
 /**
  * Create HTTP server.
  */
 
-const server = createServer(app);
+const server: Server = createServer(app);
 
 /**
  * Listen on provided port, on all network interfaces.
@@ -45,7 +45,7 @@ server.on('listening', onListening);
  * Normalize a port into a number, string, or false.
  */
 
-function normalizePort(val) {
+function normalizePort(val: string): number | string | false {
   const port = parseInt(val, 10);
 
   if (isNaN(port)) {
@@ -65,7 +65,7 @@ function normalizePort(val) {
  * Event listener for HTTP server "error" event.
  */
 
-function onError(error) {
+function onError(error: NodeJS.ErrnoException): void {
   if (error.syscall !== 'listen') {
     throw error;
   }
@@ -93,10 +93,10 @@ function onError(error) {
  * Event listener for HTTP server "listening" event.
  */
 
-function onListening() {
+function onListening(): void {
   const addr = server.address();
   const bind = typeof addr === 'string'
     ? 'pipe ' + addr
-    : 'port ' + addr.port;
+    : 'port ' + (addr?.port ?? 'unknown');
   debug('Listening on ' + bind);
 }

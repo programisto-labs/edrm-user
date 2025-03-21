@@ -1,13 +1,14 @@
 {
   "name": "edrm-user",
-  "version": "0.2.12",
+  "version": "0.3.1",
   "description": "edurance module for user management",
   "type": "module",
   "main": "app.js",
   "scripts": {
-    "start": "nodemon ./bin/www",
-    "prod": "node ./bin/www",
-    "test": "mocha"
+    "start": "node ./dist/bin/www",
+    "dev": "tsc-watch --onSuccess \"node ./dist/bin/www\"",
+    "test": "mocha",
+    "build": "tsc"
   },
   "repository": {
     "type": "git",
@@ -21,11 +22,24 @@
   "homepage": "https://github.com/florianduport/edrm-user#readme",
   "dependencies": {
     "bcrypt": "^5.1.1",
+    "endurance-core": "^0.4.12",
     "passport-azure-ad": "^4.3.5",
-    "passport-azure-ad-oauth2": "^0.0.4"
+    "passport-azure-ad-oauth2": "^0.0.4",
+    "tsc-watch": "^6.2.1"
   },
   "devDependencies": {
-    "endurance-core": "^0.3.4",
-    "mongoose": "8.9.5"
+    "@types/bcrypt": "^5.0.2",
+    "@types/debug": "^4.1.12",
+    "@types/jest": "^29.0.0",
+    "@types/jsonwebtoken": "^9.0.9",
+    "@types/node": "^20.17.24",
+    "@types/nodemailer": "^6.4.17",
+    "@types/passport": "^1.0.17",
+    "@types/passport-jwt": "^4.0.1",
+    "@types/passport-local": "^1.0.38",
+    "concurrently": "^9.1.2",
+    "reflect-metadata": "^0.2.2",
+    "ts-node": "^10.0.0",
+    "typescript": "^5.8.2"
   }
 }

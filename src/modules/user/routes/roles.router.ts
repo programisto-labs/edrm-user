@@ -1,0 +1,39 @@
+import Role from '../models/role.model.js';
+import { EnduranceRouter, type SecurityOptions } from 'endurance-core';
+import authMiddleware from '../middlewares/auth.middleware.js';
+
+
+class RoleRouter extends EnduranceRouter {
+  constructor() {
+    super(authMiddleware);
+  }
+
+  setupRoutes(): void {
+    const securityOptions: SecurityOptions = {
+      requireAuth: true,
+      permissions: ['manageRoles']
+    };
+
+    this.post('/:roleId/assign-permissions', securityOptions, async (req: any, res: any) => {
+      const { roleId } = req.params;
+      const { permissions } = req.body;
+
+      const role = await Role.findById(roleId);
+      if (!role) {
+        return res.status(404).json({ message: 'Role not found' });
+      }
+
+      role.permissions = permissions;
+      await role.save();
+
+      res.json({ message: 'Permissions assigned successfully', role });
+    });
+
+  }
+
+}
+
+const router = new RoleRouter();
+router.setupRoutes();
+
+export default router;
