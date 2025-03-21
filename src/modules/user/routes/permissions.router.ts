@@ -1,10 +1,10 @@
 import Permission from '../models/permission.model.js';
-import { EnduranceRouter, type SecurityOptions } from 'endurance-core';
-import authMiddleware from '../middlewares/auth.middleware.js';
+import { EnduranceRouter, EnduranceAuthMiddleware, type SecurityOptions } from 'endurance-core';
+
 
 class PermissionRouter extends EnduranceRouter {
     constructor() {
-        super(authMiddleware);
+        super(EnduranceAuthMiddleware.getInstance());
     }
 
     setupRoutes(): void {

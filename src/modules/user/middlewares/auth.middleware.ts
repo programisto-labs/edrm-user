@@ -308,4 +308,6 @@ class CustomAuthMiddleware extends EnduranceAuthMiddleware {
 }
 
 const authMiddleware = new CustomAuthMiddleware();
+EnduranceAuthMiddleware.setInstance(authMiddleware);
+
 export default authMiddleware;

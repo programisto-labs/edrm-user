@@ -1,8 +1,6 @@
-import { EnduranceRouter, Request as BaseRequest, Response, type SecurityOptions } from 'endurance-core';
-import { enduranceEmitter as emitter, enduranceEventTypes as eventTypes } from 'endurance-core';
+import { EnduranceRouter, Request as BaseRequest, Response, type SecurityOptions, enduranceEmitter as emitter, enduranceEventTypes as eventTypes, EnduranceAuthMiddleware } from 'endurance-core';
 import User from '../models/user.model.js';
 import Role from '../models/role.model.js';
-import authMiddleware from '../middlewares/auth.middleware.js';
 
 interface Request extends BaseRequest {
   user?: InstanceType<typeof User> & { password?: string; save(): Promise<any>; remove(): Promise<void>; };
@@ -10,7 +8,7 @@ interface Request extends BaseRequest {
 
 class UserRouter extends EnduranceRouter {
   constructor() {
-    super(authMiddleware);
+    super(EnduranceAuthMiddleware.getInstance());
   }
 
   setupRoutes(): void {
@@ -102,7 +100,7 @@ class UserRouter extends EnduranceRouter {
       return;
     }
 
-    const resetToken = await authMiddleware.auth.generateToken({ id: user._id });
+    const resetToken = await EnduranceAuthMiddleware.getInstance().auth.generateToken({ id: user._id });
     user.resetToken = resetToken;
     user.resetTokenExpiration = Date.now() + 10 * 60 * 1000; // 10 minutes from now
     await user.save();

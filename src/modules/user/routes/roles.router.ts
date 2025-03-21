@@ -1,11 +1,9 @@
 import Role from '../models/role.model.js';
-import { EnduranceRouter, type SecurityOptions } from 'endurance-core';
-import authMiddleware from '../middlewares/auth.middleware.js';
-
+import { EnduranceRouter, EnduranceAuthMiddleware, type SecurityOptions } from 'endurance-core';
 
 class RoleRouter extends EnduranceRouter {
   constructor() {
-    super(authMiddleware);
+    super(EnduranceAuthMiddleware.getInstance());
   }
 
   setupRoutes(): void {
