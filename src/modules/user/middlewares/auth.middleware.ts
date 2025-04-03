@@ -4,9 +4,14 @@ import passport from 'passport';
 import crypto from 'crypto';
 import { EnduranceAuthMiddleware, EnduranceAccessControl, EnduranceAuth } from 'endurance-core';
 import { Request, Response, NextFunction } from 'express';
+import { EnduranceDocumentType } from 'endurance-core';
 
 const secret = process.env.JWT_SECRET || 'default_secret';
 //const refreshSecret = process.env.JWT_REFRESH_SECRET || 'default_refresh_secret';
+
+interface RequestWithUser extends Request {
+  user?: EnduranceDocumentType<typeof User>;
+}
 
 passport.serializeUser(function (user: any, done) {
   done(null, user);
@@ -121,9 +126,9 @@ class CustomAuth extends EnduranceAuth {
     await User.updateOne({ refreshToken }, { $unset: { refreshToken: 1 } });
   };
 
-  public authenticateLocalAndGenerateTokens = (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  public authenticateLocalAndGenerateTokens = (req: RequestWithUser, res: Response, next: NextFunction): Promise<void> => {
     return new Promise((resolve) => {
-      passport.authenticate('local', { session: false }, async (err: any, user: typeof User, info: any) => {
+      passport.authenticate('local', { session: false }, async (err: any, user: EnduranceDocumentType<typeof User>, info: any) => {
         if (err || !user) {
           res.status(400).json({
             message: 'Something is not right',
@@ -142,7 +147,7 @@ class CustomAuth extends EnduranceAuth {
           const token = this.generateToken(user);
           const refreshToken = this.generateRefreshToken();
 
-          await this.storeRefreshToken(user.email, refreshToken);
+          await this.storeRefreshToken((user as any).email, refreshToken);
           res.json({ token, refreshToken });
           resolve();
         });
@@ -150,9 +155,9 @@ class CustomAuth extends EnduranceAuth {
     });
   };
 
-  public authenticateAzureAndGenerateTokens = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  public authenticateAzureAndGenerateTokens = async (req: RequestWithUser, res: Response, next: NextFunction): Promise<void> => {
     return new Promise((resolve) => {
-      passport.authenticate('azure_ad_oauth2', { session: false }, async (err: any, user: typeof User, info: any) => {
+      passport.authenticate('azure_ad_oauth2', { session: false }, async (err: any, user: EnduranceDocumentType<typeof User>, info: any) => {
         if (err || !user) {
           res.status(400).json({
             message: 'Something is not right',
@@ -171,7 +176,7 @@ class CustomAuth extends EnduranceAuth {
           const token = this.generateToken(user);
           const refreshToken = this.generateRefreshToken();
 
-          await this.storeRefreshToken(user.email, refreshToken);
+          await this.storeRefreshToken((user as any).email, refreshToken);
           (req as any).tokens = { token, refreshToken };
           next();
           resolve();
@@ -180,9 +185,9 @@ class CustomAuth extends EnduranceAuth {
     });
   };
 
-  public generateAzureTokens = (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  public generateAzureTokens = (req: RequestWithUser, res: Response, next: NextFunction): Promise<void> => {
     return new Promise((resolve) => {
-      passport.authenticate('azure_ad_oauth2', { session: false }, async (err: any, user: typeof User, info: any) => {
+      passport.authenticate('azure_ad_oauth2', { session: false }, async (err: any, user: EnduranceDocumentType<typeof User>, info: any) => {
         if (err || !user) {
           res.status(400).json({
             message: 'Authentication failed',
@@ -201,7 +206,7 @@ class CustomAuth extends EnduranceAuth {
             const token = this.generateToken(user);
             const refreshToken = this.generateRefreshToken();
 
-            await this.storeRefreshToken(user.email, refreshToken);
+            await this.storeRefreshToken((user as any).email, refreshToken);
 
             res.json({
               accessToken: token,

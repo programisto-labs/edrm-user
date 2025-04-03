@@ -1,8 +1,8 @@
-import { EnduranceSchema, prop, pre, Ref } from "endurance-core";
+import { EnduranceSchema, EnduranceModelType, EnduranceDocumentType } from 'endurance-core';
 import bcrypt from 'bcrypt';
 import Role from './role.model.js';
 
-@pre<User>('save', async function (next) {
+@EnduranceModelType.pre<User>('save', async function (this: EnduranceDocumentType<User>, next: (err?: Error) => void) {
   if (this.isModified('password') || (this.isNew && this.password)) {
     const hashedPassword = await bcrypt.hash(this.password!, 10);
     this.password = hashedPassword;
@@ -11,31 +11,41 @@ import Role from './role.model.js';
 })
 
 class User extends EnduranceSchema {
-  @prop({ required: true, unique: true })
+  @EnduranceModelType.prop({
+    required: true,
+    unique: true,
+    default: async function () {
+      const lastUser = await UserModel.findOne().sort({ id: -1 }).exec();
+      return lastUser ? lastUser.id + 1 : 1;
+    }
+  })
+  public id!: number;
+
+  @EnduranceModelType.prop({ required: true, unique: true })
   email!: string;
 
-  @prop({ required: false, select: false })
+  @EnduranceModelType.prop({ required: false, select: false })
   password?: string;
 
-  @prop({ required: true })
+  @EnduranceModelType.prop({ required: true })
   firstname!: string;
 
-  @prop({ required: true })
+  @EnduranceModelType.prop({ required: true })
   lastname!: string;
 
-  @prop()
+  @EnduranceModelType.prop()
   private _name?: string;
 
-  @prop({ ref: () => Role })
-  role?: Ref<typeof Role>;
+  @EnduranceModelType.prop({ ref: () => Role })
+  role?: typeof Role;
 
-  @prop({ default: null })
+  @EnduranceModelType.prop({ default: null })
   refreshToken?: string;
 
-  @prop({ default: null })
+  @EnduranceModelType.prop({ default: null })
   resetToken?: string;
 
-  @prop({ default: null })
+  @EnduranceModelType.prop({ default: null })
   resetTokenExpiration?: Date;
 
   get name(): string {
@@ -55,7 +65,10 @@ class User extends EnduranceSchema {
     return this.save();
   }
 
-  save!: () => Promise<this>;
+  public static getModel() {
+    return UserModel;
+  }
 }
 
-export default User.getModel();
+const UserModel = EnduranceModelType.getModelForClass(User);
+export default UserModel;

@@ -1,10 +1,7 @@
-import { EnduranceRouter, Request as BaseRequest, Response, type SecurityOptions, enduranceEmitter as emitter, enduranceEventTypes as eventTypes, EnduranceAuthMiddleware } from 'endurance-core';
+import { EnduranceRouter, EnduranceRequest, Response, NextFunction, type SecurityOptions, enduranceEmitter as emitter, enduranceEventTypes as eventTypes, EnduranceAuthMiddleware, EnduranceDocumentType } from 'endurance-core';
 import User from '../models/user.model.js';
 import Role from '../models/role.model.js';
-
-interface Request extends BaseRequest {
-  user?: InstanceType<typeof User> & { password?: string; save(): Promise<any>; remove(): Promise<void>; };
-}
+import crypto from 'crypto';
 
 class UserRouter extends EnduranceRouter {
   constructor() {
@@ -20,22 +17,60 @@ class UserRouter extends EnduranceRouter {
       requireAuth: true
     };
 
-    this.get('/test', publicRoutes, (req, res) => {
-      this.checkAuth(req, res);
+    this.get('/test', publicRoutes, async (req: EnduranceRequest, res: Response, next: NextFunction) => {
+      try {
+        await this.checkAuth(req, res);
+      } catch (error) {
+        next(error);
+      }
     });
 
     // Routes publiques
-    this.get('/auth-methods', publicRoutes, (req, res) => { this.getAuthMethods(req, res); });
-    this.get('/find', publicRoutes, (req, res) => { this.findUser(req, res); });
-    this.post('/register', publicRoutes, (req, res) => { this.registerUser(req, res); });
+    this.get('/auth-methods', publicRoutes, async (req: EnduranceRequest, res: Response, next: NextFunction) => {
+      await this.getAuthMethods(req, res, next);
+    });
+
+    this.get('/find', publicRoutes, async (req: EnduranceRequest, res: Response) => {
+      await this.findUser(req, res);
+    });
+
+    this.post('/register', publicRoutes, async (req: EnduranceRequest, res: Response) => {
+      await this.registerUser(req, res);
+    });
 
     // Routes authentifiées
-    this.get('/check-auth', authenticatedRoutes, (req, res) => { this.checkAuth(req, res); });
+    this.get('/check-auth', authenticatedRoutes, async (req: EnduranceRequest, res: Response, next: NextFunction) => {
+      try {
+        await this.checkAuth(req, res);
+      } catch (error) {
+        next(error);
+      }
+    });
 
     if (process.env.LOGIN_LOCAL_ACTIVATED) {
-      this.post('/login/local', publicRoutes, (req, res) => { this.localLogin(req, res); });
-      this.post('/request-password-reset', publicRoutes, (req, res) => { this.requestPasswordReset(req, res); });
-      this.post('/reset-password', publicRoutes, (req, res) => { this.resetPassword(req, res); });
+      this.post('/login/local', publicRoutes, async (req: EnduranceRequest, res: Response, next: NextFunction) => {
+        try {
+          await this.localLogin(req, res);
+        } catch (error) {
+          next(error);
+        }
+      });
+
+      this.post('/request-password-reset', publicRoutes, async (req: EnduranceRequest, res: Response, next: NextFunction) => {
+        try {
+          await this.requestPasswordReset(req, res);
+        } catch (error) {
+          next(error);
+        }
+      });
+
+      this.post('/reset-password', publicRoutes, async (req: EnduranceRequest, res: Response, next: NextFunction) => {
+        try {
+          await this.resetPassword(req, res);
+        } catch (error) {
+          next(error);
+        }
+      });
     }
 
     if (process.env.LOGIN_AZURE_ACTIVATED === 'true') {
@@ -53,45 +88,82 @@ class UserRouter extends EnduranceRouter {
       permissions: ['manageUsers']
     };
 
-    this.get('/profile', profileRoutes, (req, res) => { this.getProfile(req, res); });
-    this.patch('/profile', profileRoutes, (req, res) => { this.updateProfile(req, res); });
-    this.delete('/profile', adminRoutes, (req, res) => { this.deleteProfile(req, res); });
-    this.post('/assign-role', adminRoutes, (req, res) => { this.assignRole(req, res); });
-    this.post('/refresh-token', authenticatedRoutes, (req, res) => { this.refreshToken(req, res); });
-    this.post('/revoke-token', authenticatedRoutes, (req, res) => { this.revokeToken(req, res); });
+    this.get('/profile', profileRoutes, async (req: EnduranceRequest, res: Response) => {
+      await this.getProfile(req, res);
+    });
+
+    this.patch('/profile', profileRoutes, async (req: EnduranceRequest, res: Response) => {
+      await this.updateProfile(req, res);
+    });
+
+    this.delete('/profile', adminRoutes, async (req: EnduranceRequest, res: Response, next: NextFunction) => {
+      try {
+        await this.deleteProfile(req, res);
+      } catch (error) {
+        next(error);
+      }
+    });
+
+    this.post('/assign-role', adminRoutes, async (req: EnduranceRequest, res: Response, next: NextFunction) => {
+      try {
+        await this.assignRole(req, res);
+      } catch (error) {
+        next(error);
+      }
+    });
+
+    this.post('/refresh-token', authenticatedRoutes, async (req: EnduranceRequest, res: Response, next: NextFunction) => {
+      try {
+        await this.refreshToken(req, res);
+      } catch (error) {
+        next(error);
+      }
+    });
+
+    this.post('/revoke-token', authenticatedRoutes, async (req: EnduranceRequest, res: Response, next: NextFunction) => {
+      try {
+        await this.revokeToken(req, res);
+      } catch (error) {
+        next(error);
+      }
+    });
   }
 
-  private getAuthMethods = async (req: Request, res: Response): Promise<void> => {
-    const authMethods = {
-      local: process.env.LOGIN_LOCAL_ACTIVATED === 'true',
-      azure: process.env.LOGIN_AZURE_ACTIVATED === 'true'
-    };
-    res.json({ authMethods });
+  private getAuthMethods = async (req: EnduranceRequest, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const authMethods = {
+        local: process.env.LOGIN_LOCAL_ACTIVATED === 'true',
+        azure: process.env.LOGIN_AZURE_ACTIVATED === 'true'
+      };
+      res.json({ authMethods });
+    } catch (error) {
+      next(error);
+    }
   };
 
-  private checkAuth = async (req: Request, res: Response): Promise<void> => {
+  private checkAuth = async (req: EnduranceRequest, res: Response): Promise<void> => {
     res.json({ result: 'ok' });
   };
 
-  private findUser = async (req: Request, res: Response): Promise<void> => {
+  private findUser = async (req: EnduranceRequest, res: Response): Promise<void> => {
     const { email } = req.query;
     const user = await User.findOne({ email });
     res.json(user);
   };
 
-  private registerUser = async (req: Request, res: Response): Promise<void> => {
+  private registerUser = async (req: EnduranceRequest, res: Response): Promise<void> => {
     const user = new User(req.body);
     await user.save();
     emitter.emit(eventTypes.userRegistered, user);
     res.status(201).json({ message: 'User registered successfully' });
   };
 
-  private localLogin = async (req: Request, res: Response): Promise<void> => {
+  private localLogin = async (req: EnduranceRequest, res: Response): Promise<void> => {
     emitter.emit(eventTypes.userLoggedIn, req.user);
     res.json({ message: 'User logged in successfully' });
   };
 
-  private requestPasswordReset = async (req: Request, res: Response): Promise<void> => {
+  private requestPasswordReset = async (req: EnduranceRequest, res: Response): Promise<void> => {
     const { email } = req.body;
     const user = await User.findOne({ email });
 
@@ -100,9 +172,9 @@ class UserRouter extends EnduranceRouter {
       return;
     }
 
-    const resetToken = await EnduranceAuthMiddleware.getInstance().auth.generateToken({ id: user._id });
+    const resetToken = crypto.randomBytes(40).toString('hex');
     user.resetToken = resetToken;
-    user.resetTokenExpiration = Date.now() + 10 * 60 * 1000; // 10 minutes from now
+    user.resetTokenExpiration = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes from now
     await user.save();
 
     emitter.emit('passwordResetRequested', { user, resetToken });
@@ -110,7 +182,7 @@ class UserRouter extends EnduranceRouter {
     res.json({ message: 'Password reset token generated' });
   };
 
-  private resetPassword = async (req: Request, res: Response): Promise<void> => {
+  private resetPassword = async (req: EnduranceRequest, res: Response): Promise<void> => {
     const { resetToken, newPassword } = req.body;
     const user = await User.findOne({ resetToken, resetTokenExpiration: { $gt: Date.now() } });
 
@@ -120,8 +192,8 @@ class UserRouter extends EnduranceRouter {
     }
 
     user.password = newPassword;
-    user.resetToken = null;
-    user.resetTokenExpiration = null;
+    user.resetToken = undefined;
+    user.resetTokenExpiration = undefined;
     await user.save();
 
     emitter.emit('passwordReset', user);
@@ -141,12 +213,24 @@ class UserRouter extends EnduranceRouter {
         requireAuth: false
       };
 
-      this.get('/login/azure', publicRoutes, (req, res) => { this.azureLogin(req, res); });
-      this.post('/login/azure/exchange', publicRoutes, (req, res) => { this.azureExchange(req, res); });
+      this.get('/login/azure', publicRoutes, async (req: EnduranceRequest, res: Response, next: NextFunction) => {
+        try {
+          await this.azureLogin(req, res);
+        } catch (error) {
+          next(error);
+        }
+      });
+      this.post('/login/azure/exchange', publicRoutes, async (req: EnduranceRequest, res: Response, next: NextFunction) => {
+        try {
+          await this.azureExchange(req, res);
+        } catch (error) {
+          next(error);
+        }
+      });
     }
   }
 
-  private azureLogin = async (req: Request, res: Response): Promise<void> => {
+  private azureLogin = async (req: EnduranceRequest, res: Response): Promise<void> => {
     emitter.emit(eventTypes.userLoggedIn, req.user);
     const loginCallbackUrl = process.env.AZURE_CALLBACK_URL;
     if (loginCallbackUrl) {
@@ -155,16 +239,16 @@ class UserRouter extends EnduranceRouter {
     res.json({ message: 'User logged in successfully' });
   };
 
-  private azureExchange = async (req: Request, res: Response) => {
+  private azureExchange = async (req: EnduranceRequest, res: Response) => {
     emitter.emit(eventTypes.userLoggedIn, req.user);
     res.json({ message: 'User logged in successfully' });
   };
 
-  private getProfile = async (req: Request, res: Response): Promise<void> => {
+  private getProfile = async (req: EnduranceRequest, res: Response): Promise<void> => {
     res.json(req.user);
   };
 
-  private updateProfile = async (req: Request, res: Response): Promise<void> => {
+  private updateProfile = async (req: EnduranceRequest, res: Response): Promise<void> => {
     if (!req.user) {
       res.status(401).json({ message: 'User not authenticated' });
       return;
@@ -191,13 +275,13 @@ class UserRouter extends EnduranceRouter {
     res.json(req.user);
   };
 
-  private deleteProfile = async (req: Request, res: Response): Promise<void> => {
+  private deleteProfile = async (req: EnduranceRequest, res: Response): Promise<void> => {
     await req.user.remove();
     emitter.emit('userDeleted', req.user);
     res.json({ message: 'User deleted successfully' });
   };
 
-  private assignRole = async (req: Request, res: Response): Promise<void> => {
+  private assignRole = async (req: EnduranceRequest, res: Response): Promise<void> => {
     const { userId, roleId } = req.body;
 
     if (!userId || !roleId) {
@@ -219,11 +303,11 @@ class UserRouter extends EnduranceRouter {
     res.json({ message: 'Role assigned successfully', user });
   };
 
-  private refreshToken = async (req: Request, res: Response) => {
+  private refreshToken = async (req: EnduranceRequest, res: Response) => {
     res.json({ message: 'Token refreshed successfully' });
   };
 
-  private revokeToken = async (req: Request, res: Response) => {
+  private revokeToken = async (req: EnduranceRequest, res: Response): Promise<void> => {
     res.json({ message: 'Token revoked successfully' });
   };
 }

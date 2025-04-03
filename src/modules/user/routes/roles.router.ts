@@ -1,5 +1,5 @@
 import Role from '../models/role.model.js';
-import { EnduranceRouter, EnduranceAuthMiddleware, type SecurityOptions } from 'endurance-core';
+import { EnduranceRouter, EnduranceAuthMiddleware, type SecurityOptions, EnduranceRequest } from 'endurance-core';
 
 class RoleRouter extends EnduranceRouter {
   constructor() {
@@ -12,7 +12,7 @@ class RoleRouter extends EnduranceRouter {
       permissions: ['manageRoles']
     };
 
-    this.post('/:roleId/assign-permissions', securityOptions, async (req: any, res: any) => {
+    this.post('/:roleId/assign-permissions', securityOptions, async (req: EnduranceRequest, res: any) => {
       const { roleId } = req.params;
       const { permissions } = req.body;
 
@@ -32,6 +32,5 @@ class RoleRouter extends EnduranceRouter {
 }
 
 const router = new RoleRouter();
-router.setupRoutes();
 
 export default router;
