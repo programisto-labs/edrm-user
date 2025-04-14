@@ -7,6 +7,16 @@ import Role from './role.model.js';
     const hashedPassword = await bcrypt.hash(this.password!, 10);
     this.password = hashedPassword;
   }
+
+  // Gérer la transition uid -> id
+  if (!this.id && (this as any).uid) {
+    this.id = (this as any).uid;
+  }
+
+  if (!this.id) {
+    const lastUser = await UserModel.findOne().sort({ id: -1 });
+    this.id = lastUser ? lastUser.id + 1 : 1;
+  }
   next();
 })
 
@@ -14,12 +24,17 @@ class User extends EnduranceSchema {
   @EnduranceModelType.prop({
     required: true,
     unique: true,
-    default: async function () {
-      const lastUser = await UserModel.findOne().sort({ id: -1 }).exec();
-      return lastUser ? lastUser.id + 1 : 1;
+    get: function (this: any) {
+      return this.id || this.uid;
     }
   })
   public id!: number;
+
+  // Garder uid pour la rétrocompatibilité
+  @EnduranceModelType.prop({
+    required: false
+  })
+  public uid?: number;
 
   @EnduranceModelType.prop({ required: true, unique: true })
   email!: string;
