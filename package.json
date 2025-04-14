@@ -22,8 +22,7 @@
   "homepage": "https://github.com/florianduport/edrm-user#readme",
   "dependencies": {
     "bcrypt": "^5.1.1",
-    "edrm-prometheus": "^1.0.8",
-    "endurance-core": "^0.4.23",
+    "endurance-core": "^0.4.24",
     "passport-azure-ad": "^4.3.5",
     "passport-azure-ad-oauth2": "^0.0.4",
     "tsc-watch": "^6.2.1"
