@@ -1,4 +1,5 @@
 import User from '../models/user.model.js';
+import Role from '../models/role.model.js';
 import jwt from 'jsonwebtoken';
 import passport from 'passport';
 import crypto from 'crypto';
@@ -49,7 +50,11 @@ class CustomAccessControl extends EnduranceAccessControl {
       }
 
       if (!user.role) {
-        await user.populate('role').execPopulate();
+        await user.populate({
+          path: 'role',
+          model: Role,
+          options: { strictPopulate: false }
+        }).execPopulate();
       }
 
       const userPermissions = user.role?.permissions?.map((perm: any) => perm.name) || [];

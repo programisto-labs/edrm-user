@@ -130,7 +130,7 @@ class UserRouter extends EnduranceRouter {
     };
 
     this.get('/profile', authenticatedRoutes, async (req: EnduranceRequest, res: Response) => {
-      console.log('Profile route - User:', req.user);
+
       if (!req.user) {
         res.status(401).json({ message: 'User not authenticated' });
         return;
@@ -139,7 +139,11 @@ class UserRouter extends EnduranceRouter {
       try {
         const user = await User.findById(req.user._id)
           .select('-password -refreshToken')
-          .populate('role')
+          .populate({
+            path: 'role',
+            model: Role,
+            options: { strictPopulate: false }
+          })
           .exec() as unknown as UserDocument;
 
         if (!user) {
