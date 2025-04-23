@@ -156,11 +156,13 @@ class UserRouter extends EnduranceRouter {
         }
 
         let permissions = [];
-        for (const role of user.roles) {
-          for (const permission of role.permissions) {
-            let permissionData = await Permission.findOne({ _id: permission });
-            if (permissionData) {
-              permissions.push(simpleHash(permissionData.name, user.firstname));
+        if (user.roles && user.roles.length > 0) {
+          for (const role of user.roles) {
+            for (const permission of role.permissions) {
+              let permissionData = await Permission.findOne({ _id: permission });
+              if (permissionData) {
+                permissions.push(simpleHash(permissionData.name, user.firstname));
+              }
             }
           }
         }
