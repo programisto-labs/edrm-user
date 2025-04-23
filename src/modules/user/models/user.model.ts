@@ -52,7 +52,7 @@ class User extends EnduranceSchema {
   private _name?: string;
 
   @EnduranceModelType.prop({ ref: () => Role })
-  role?: typeof Role;
+  roles?: typeof Role[];
 
   @EnduranceModelType.prop({ default: null })
   refreshToken?: string;

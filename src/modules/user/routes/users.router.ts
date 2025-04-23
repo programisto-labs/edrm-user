@@ -1,14 +1,20 @@
 import { EnduranceRouter, EnduranceRequest, Response, NextFunction, type SecurityOptions, enduranceEmitter as emitter, enduranceEventTypes as eventTypes, EnduranceAuthMiddleware, EnduranceDocumentType } from 'endurance-core';
 import User from '../models/user.model.js';
 import Role from '../models/role.model.js';
+import Permission from '../models/permission.model.js';
 import crypto from 'crypto';
+
+// Fonction utilitaire pour le hachage MD5 simple
+const simpleHash = (str: string, salt: string): string => {
+  return crypto.createHash('md5').update(str + salt).digest('hex');
+};
 
 interface UserDocument extends EnduranceDocumentType<typeof User> {
   email: string;
   firstname: string;
   lastname: string;
   name: string;
-  role: any;
+  roles: any[];
   xpHistory: any[];
   completedQuests: any[];
   badges: any[];
@@ -140,8 +146,13 @@ class UserRouter extends EnduranceRouter {
         const user = await User.findById(req.user._id)
           .select('-password -refreshToken')
           .populate({
-            path: 'role',
+            path: 'roles',
             model: Role,
+            options: { strictPopulate: false }
+          })
+          .populate({
+            path: 'roles.permissions',
+            model: Permission,
             options: { strictPopulate: false }
           })
           .exec() as unknown as UserDocument;
@@ -151,13 +162,24 @@ class UserRouter extends EnduranceRouter {
           return;
         }
 
+        let permissions = [];
+        for (const role of user.roles) {
+          for (const permission of role.permissions) {
+            let permissionData = await Permission.findOne({ _id: permission });
+            if (permissionData) {
+              permissions.push(simpleHash(permissionData.name, user.firstname));
+            }
+          }
+        }
+        console.log(permissions);
         res.json({
           id: user._id,
           email: user.email,
           firstname: user.firstname,
           lastname: user.lastname,
           name: user.name,
-          role: user.role,
+          roles: user.roles?.map(role => simpleHash(role.name, user.firstname)),
+          permissions: permissions,
           createdAt: user.createdAt,
           updatedAt: user.updatedAt
         });
@@ -220,7 +242,10 @@ class UserRouter extends EnduranceRouter {
         return;
       }
 
-      user.role = roleId;
+      if (!user.roles) {
+        user.roles = [];
+      }
+      user.roles.push(roleId);
       await user.save();
       emitter.emit(eventTypes.roleAssigned, { user, role });
       res.json({ message: 'Role assigned successfully', user });
@@ -272,6 +297,7 @@ class UserRouter extends EnduranceRouter {
         emitter.emit(eventTypes.userLoggedIn, req.user);
         const loginCallbackUrl = process.env.AZURE_CALLBACK_URL;
         if (loginCallbackUrl) {
+
           return res.redirect(loginCallbackUrl);
         }
         res.json({ message: 'User logged in successfully' });
