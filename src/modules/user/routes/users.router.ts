@@ -38,13 +38,6 @@ class UserRouter extends EnduranceRouter {
       requireAuth: true
     };
 
-    // Middleware de debug pour tracer les requêtes
-    this.router.use((req: EnduranceRequest, res: Response, next: NextFunction) => {
-      console.log('Request path:', req.path);
-      console.log('Request headers:', req.headers);
-      next();
-    });
-
     // Routes publiques
     this.get('/auth-methods', publicRoutes, async (req: EnduranceRequest, res: Response) => {
       const authMethods = {
@@ -171,7 +164,6 @@ class UserRouter extends EnduranceRouter {
             }
           }
         }
-        console.log(permissions);
         res.json({
           id: user._id,
           email: user.email,
