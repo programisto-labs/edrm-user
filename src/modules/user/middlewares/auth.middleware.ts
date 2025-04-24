@@ -50,11 +50,11 @@ class CustomAccessControl extends EnduranceAccessControl {
       }
 
       if (!user.role) {
-        await user.populate({
+        await User.populate(user, {
           path: 'role',
           model: Role,
           options: { strictPopulate: false }
-        }).execPopulate();
+        });
       }
 
       const userPermissions = user.role?.permissions?.map((perm: any) => perm.name) || [];
