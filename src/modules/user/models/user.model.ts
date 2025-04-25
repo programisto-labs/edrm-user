@@ -22,7 +22,7 @@ import Role from './role.model.js';
 
 class User extends EnduranceSchema {
   @EnduranceModelType.prop({
-    required: true,
+    required: false,
     unique: true,
     get: function (this: any) {
       return this.id || this.uid;
