@@ -1,6 +1,6 @@
 {
   "name": "edrm-user",
-  "version": "0.4.8",
+  "version": "0.4.9",
   "description": "edurance module for user management",
   "type": "module",
   "main": "app.js",
