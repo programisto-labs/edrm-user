@@ -26,9 +26,7 @@ class RoleRouter extends EnduranceRouter {
 
       res.json({ message: 'Permissions assigned successfully', role });
     });
-
   }
-
 }
 
 const router = new RoleRouter();

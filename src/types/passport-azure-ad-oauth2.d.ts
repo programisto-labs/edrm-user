@@ -11,4 +11,4 @@ declare module 'passport-azure-ad-oauth2' {
             allowHttpForRedirectUrl?: boolean;
         }, verify: Function);
     }
-} 
+};

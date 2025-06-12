@@ -1,26 +1,10 @@
 import { EnduranceSchema, EnduranceModelType, EnduranceDocumentType } from 'endurance-core';
 import bcrypt from 'bcrypt';
 import Role from './role.model.js';
+import { UserType } from '../../../types/user.js';
+import { RoleType } from '../../../types/role.js';
 
-@EnduranceModelType.pre<User>('save', async function (this: EnduranceDocumentType<User>, next: (err?: Error) => void) {
-  if (this.isModified('password') || (this.isNew && this.password)) {
-    const hashedPassword = await bcrypt.hash(this.password!, 10);
-    this.password = hashedPassword;
-  }
-
-  // Gérer la transition uid -> id
-  if (!this.id && (this as any).uid) {
-    this.id = (this as any).uid;
-  }
-
-  if (!this.id) {
-    const lastUser = await UserModel.findOne().sort({ id: -1 });
-    this.id = lastUser ? lastUser.id + 1 : 1;
-  }
-  next();
-})
-
-class User extends EnduranceSchema {
+class User extends EnduranceSchema implements UserType {
   @EnduranceModelType.prop({
     required: false,
     unique: true,
@@ -52,7 +36,7 @@ class User extends EnduranceSchema {
   private _name?: string;
 
   @EnduranceModelType.prop({ ref: () => Role })
-  roles?: typeof Role[];
+  roles?: RoleType[];
 
   @EnduranceModelType.prop({ default: null })
   refreshToken?: string;
@@ -84,6 +68,23 @@ class User extends EnduranceSchema {
     return UserModel;
   }
 }
+
+EnduranceModelType.pre<User>('save', async function (this: EnduranceDocumentType<User>, next: (err?: Error) => void) {
+  if (this.isModified('password') || (this.isNew && this.password)) {
+    const hashedPassword = await bcrypt.hash(this.password!, 10);
+    this.password = hashedPassword;
+  }
+
+  if (!this.id && (this as any).uid) {
+    this.id = (this as any).uid;
+  }
+
+  if (!this.id) {
+    const lastUser = await UserModel.findOne().sort({ id: -1 });
+    this.id = lastUser ? lastUser.id + 1 : 1;
+  }
+  next();
+});
 
 const UserModel = EnduranceModelType.getModelForClass(User);
 export default UserModel;

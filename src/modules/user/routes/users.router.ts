@@ -129,7 +129,6 @@ class UserRouter extends EnduranceRouter {
     };
 
     this.get('/profile', authenticatedRoutes, async (req: EnduranceRequest, res: Response) => {
-
       if (!req.user) {
         res.status(401).json({ message: 'User not authenticated' });
         return;
@@ -155,12 +154,12 @@ class UserRouter extends EnduranceRouter {
           return;
         }
 
-        let permissions = [];
+        const permissions = [];
         if (user.roles && Array.isArray(user.roles)) {
           for (const role of user.roles) {
             if (role && role.permissions && Array.isArray(role.permissions)) {
               for (const permission of role.permissions) {
-                let permissionData = await Permission.findOne({ _id: permission });
+                const permissionData = await Permission.findOne({ _id: permission });
                 if (permissionData) {
                   permissions.push(simpleHash(permissionData.name, user.firstname));
                 }
@@ -175,7 +174,7 @@ class UserRouter extends EnduranceRouter {
           lastname: user.lastname,
           name: user.name,
           roles: Array.isArray(user.roles) ? user.roles.map(role => role ? simpleHash(role.name, user.firstname) : null).filter(Boolean) : [],
-          permissions: permissions,
+          permissions,
           createdAt: user.createdAt,
           updatedAt: user.updatedAt
         });
@@ -201,7 +200,9 @@ class UserRouter extends EnduranceRouter {
         return;
       }
 
-      updates.forEach(update => req.user[update] = req.body[update]);
+      updates.forEach(update => {
+        req.user[update] = req.body[update];
+      });
 
       if (req.body.password) {
         req.user.password = req.body.password;
@@ -293,7 +294,6 @@ class UserRouter extends EnduranceRouter {
         emitter.emit(eventTypes.userLoggedIn, req.user);
         const loginCallbackUrl = process.env.AZURE_CALLBACK_URL;
         if (loginCallbackUrl) {
-
           return res.redirect(loginCallbackUrl);
         }
         res.json({ message: 'User logged in successfully' });
