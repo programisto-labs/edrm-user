@@ -1,8 +1,7 @@
-/* eslint-disable no-unused-expressions */
-import { expect } from 'chai';
+import { describe, it, expect } from 'vitest';
 
-describe('Basic Sanity Check', () => {
-  it('should always pass', () => {
-    expect(true).to.be.true;
+describe('Basic', () => {
+  it('works', () => {
+    expect(true).toBe(true);
   });
 });
