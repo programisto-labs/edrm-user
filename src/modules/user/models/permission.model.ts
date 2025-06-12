@@ -1,7 +1,6 @@
 import { EnduranceSchema, EnduranceModelType } from 'endurance-core';
 
 class Permission extends EnduranceSchema {
-
   @EnduranceModelType.prop({ required: true, unique: true })
   public name!: string;
 
