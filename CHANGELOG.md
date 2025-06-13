@@ -1,3 +1,10 @@
+## [0.4.11](https://github.com/programisto-labs/edrm-user/compare/v0.4.10...v0.4.11) (2025-06-13)
+
+
+### Bug Fixes
+
+* force release ([4286eec](https://github.com/programisto-labs/edrm-user/commit/4286eecd48f921ee6b6c894029a1dc4da679cf99))
+
 ## [0.4.10](https://github.com/programisto-labs/edrm-user/compare/v0.4.9...v0.4.10) (2025-06-13)
 
 
