@@ -2,7 +2,6 @@ import { EnduranceSchema, EnduranceModelType } from 'endurance-core';
 import Permission from './permission.model.js';
 
 class Role extends EnduranceSchema {
-
   @EnduranceModelType.prop({ required: true, unique: true })
   public name!: string;
 

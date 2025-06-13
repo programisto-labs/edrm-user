@@ -3,15 +3,14 @@ import Role from '../models/role.model.js';
 import jwt from 'jsonwebtoken';
 import passport from 'passport';
 import crypto from 'crypto';
-import { EnduranceAuthMiddleware, EnduranceAccessControl, EnduranceAuth } from 'endurance-core';
+import { EnduranceAuthMiddleware, EnduranceAccessControl, EnduranceAuth, EnduranceDocumentType } from 'endurance-core';
 import { Request, Response, NextFunction } from 'express';
-import { EnduranceDocumentType } from 'endurance-core';
 import { Strategy as AzureAdOAuth2Strategy } from 'passport-azure-ad-oauth2';
 import { Strategy as JwtStrategy, ExtractJwt } from 'passport-jwt';
 import { Strategy as LocalStrategy } from 'passport-local';
 
 const secret = process.env.JWT_SECRET || 'default_secret';
-const refreshSecret = process.env.JWT_REFRESH_SECRET || 'default_refresh_secret';
+// const refreshSecret = process.env.JWT_REFRESH_SECRET || 'default_refresh_secret';
 
 type UserDocument = EnduranceDocumentType<typeof User> & {
   email: string;
@@ -150,7 +149,7 @@ class CustomAuth extends EnduranceAuth {
         tenant: tenant,
         allowHttpForRedirectUrl: process.env.NODE_ENV === 'development'
       },
-        async function (accessToken: string, refresh_token: string, params: any, profile: any, done: any) {
+        async function (accessToken: string, refreshToken: string, params: any, profile: any, done: any) {
           try {
             const waadProfile = jwt.decode(params.id_token) as { upn: string; email?: string };
             if (!waadProfile || (!waadProfile.upn && !waadProfile.email)) {
@@ -179,7 +178,7 @@ class CustomAuth extends EnduranceAuth {
       new JwtStrategy(
         {
           jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
-          secretOrKey: secret,
+          secretOrKey: secret
         },
         async (jwtPayload: any, done: any) => {
           try {
@@ -203,7 +202,7 @@ class CustomAuth extends EnduranceAuth {
       new LocalStrategy(
         {
           usernameField: 'email',
-          passwordField: 'password',
+          passwordField: 'password'
         },
         async (email: string, password: string, done: any) => {
           try {
@@ -228,7 +227,7 @@ class CustomAuth extends EnduranceAuth {
           jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
           secretOrKey: secret,
           issuer: `https://sts.windows.net/${process.env.AZURE_TENANT}/`,
-          audience: process.env.AZURE_CLIENT_ID,
+          audience: process.env.AZURE_CLIENT_ID
         },
         async (jwtPayload: any, done: any) => {
           try {

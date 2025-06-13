@@ -1,33 +1,46 @@
 {
-  "name": "edrm-user",
-  "version": "0.4.9",
+  "name": "@programisto/edrm-user",
+  "version": "0.4.10",
+  "publishConfig": {
+    "access": "public"
+  },
   "description": "edurance module for user management",
   "type": "module",
   "main": "app.js",
   "scripts": {
     "start": "node ./dist/bin/www",
     "dev": "tsc-watch --onSuccess \"node ./dist/bin/www\"",
-    "test": "mocha",
-    "build": "tsc"
+    "test": "vitest",
+    "build": "tsc",
+    "lint": "eslint \"**/*.{ts,tsx}\"",
+    "prepare": "husky install"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/florianduport/edrm-user.git"
+    "url": "git+https://github.com/programisto-labs/edrm-user.git"
   },
   "author": "florianduport",
   "license": "ISC",
   "bugs": {
-    "url": "https://github.com/florianduport/edrm-user/issues"
+    "url": "https://github.com/programisto-labs/edrm-user/issues"
   },
-  "homepage": "https://github.com/florianduport/edrm-user#readme",
+  "homepage": "https://github.com/programisto-labs/edrm-user#readme",
   "dependencies": {
     "bcrypt": "^5.1.1",
+    "chai": "^5.2.0",
     "endurance-core": "^0.4.25",
     "passport-azure-ad": "^4.3.5",
     "passport-azure-ad-oauth2": "^0.0.4",
     "tsc-watch": "^6.2.1"
   },
   "devDependencies": {
+    "@commitlint/config-conventional": "^19.8.1",
+    "@semantic-release/changelog": "^6.0.3",
+    "@semantic-release/commit-analyzer": "^13.0.1",
+    "@semantic-release/git": "^10.0.1",
+    "@semantic-release/github": "^11.0.3",
+    "@semantic-release/npm": "^12.0.1",
+    "@semantic-release/release-notes-generator": "^14.0.3",
     "@types/bcrypt": "^5.0.2",
     "@types/debug": "^4.1.12",
     "@types/jest": "^29.0.0",
@@ -37,9 +50,20 @@
     "@types/passport": "^1.0.17",
     "@types/passport-jwt": "^4.0.1",
     "@types/passport-local": "^1.0.38",
+    "@typescript-eslint/eslint-plugin": "^8.26.0",
+    "@typescript-eslint/parser": "^8.26.0",
+    "commitlint": "^19.8.1",
     "concurrently": "^9.1.2",
+    "eslint": "^8.57.1",
+    "eslint-config-standard": "^17.1.0",
+    "eslint-plugin-import": "^2.31.0",
+    "eslint-plugin-n": "^16.6.2",
+    "eslint-plugin-promise": "^6.6.0",
+    "husky": "^9.1.7",
     "reflect-metadata": "^0.2.2",
+    "semantic-release": "^24.2.5",
     "ts-node": "^10.0.0",
-    "typescript": "^5.8.2"
+    "typescript": "^5.8.2",
+    "vitest": "^3.2.3"
   }
 }
