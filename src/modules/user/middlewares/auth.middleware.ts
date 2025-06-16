@@ -34,12 +34,15 @@ class CustomAccessControl extends EnduranceAccessControl {
   authorize(...args: any[]): void {
     throw new Error('Method not implemented.');
   }
+
   isAuthenticated(...args: any[]): void {
     throw new Error('Method not implemented.');
   }
+
   handleAuthError(err: any, req: any, res: any, next: any): void {
-    throw new Error('Method not implemented.');
+    next(err);
   }
+
   public checkUserPermissions = async (
     permissions: string[],
     req: Request,
