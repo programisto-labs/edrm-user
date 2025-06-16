@@ -1,4 +1,4 @@
-import { EnduranceSchema, EnduranceModelType, EnduranceDocumentType } from 'endurance-core';
+import { EnduranceSchema, EnduranceModelType, EnduranceDocumentType } from '@programisto/endurance-core';
 import bcrypt from 'bcrypt';
 import Role from './role.model.js';
 import { UserType } from '../../../types/user.js';
