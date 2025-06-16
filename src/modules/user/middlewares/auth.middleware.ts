@@ -3,7 +3,7 @@ import Role from '../models/role.model.js';
 import jwt from 'jsonwebtoken';
 import passport from 'passport';
 import crypto from 'crypto';
-import { EnduranceAuthMiddleware, EnduranceAccessControl, EnduranceAuth, EnduranceDocumentType } from 'endurance-core';
+import { EnduranceAuthMiddleware, EnduranceAccessControl, EnduranceAuth, EnduranceDocumentType } from '@programisto/endurance-core';
 import { Request, Response, NextFunction } from 'express';
 import { Strategy as AzureAdOAuth2Strategy } from 'passport-azure-ad-oauth2';
 import { Strategy as JwtStrategy, ExtractJwt } from 'passport-jwt';
@@ -31,6 +31,15 @@ passport.deserializeUser(function (user: any, done) {
 });
 
 class CustomAccessControl extends EnduranceAccessControl {
+  authorize(...args: any[]): void {
+    throw new Error('Method not implemented.');
+  }
+  isAuthenticated(...args: any[]): void {
+    throw new Error('Method not implemented.');
+  }
+  handleAuthError(err: any, req: any, res: any, next: any): void {
+    throw new Error('Method not implemented.');
+  }
   public checkUserPermissions = async (
     permissions: string[],
     req: Request,

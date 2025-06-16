@@ -1,5 +1,5 @@
 import Role from '../models/role.model.js';
-import { EnduranceRouter, EnduranceAuthMiddleware, type SecurityOptions, EnduranceRequest } from 'endurance-core';
+import { EnduranceRouter, EnduranceAuthMiddleware, type SecurityOptions, EnduranceRequest } from '@programisto/endurance-core';
 
 class RoleRouter extends EnduranceRouter {
   constructor() {
