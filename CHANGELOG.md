@@ -1,3 +1,12 @@
+## [0.4.13](https://github.com/programisto-labs/edrm-user/compare/v0.4.12...v0.4.13) (2025-06-16)
+
+
+### Bug Fixes
+
+* fix import endurance-core ([0deb5ce](https://github.com/programisto-labs/edrm-user/commit/0deb5ce7f0f22880706a3d317567f22b0aef38dd))
+* fix import endurance-core ([f76bb87](https://github.com/programisto-labs/edrm-user/commit/f76bb871eba7b66838ae9f2fd9da625175b50a5a))
+* update endurance-core version ([ef1624f](https://github.com/programisto-labs/edrm-user/commit/ef1624f3b5b50d609d81215fc8e9292aceb922e6))
+
 ## [0.4.12](https://github.com/programisto-labs/edrm-user/compare/v0.4.11...v0.4.12) (2025-06-16)
 
 
