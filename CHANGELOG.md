@@ -1,3 +1,11 @@
+## [0.4.15](https://github.com/programisto-labs/edrm-user/compare/v0.4.14...v0.4.15) (2025-07-29)
+
+
+### Bug Fixes
+
+* fix missing packages ([566bc8b](https://github.com/programisto-labs/edrm-user/commit/566bc8bc6ff3909a57199ca5a2e66dda34d078db))
+* version ([02005ce](https://github.com/programisto-labs/edrm-user/commit/02005ce1228d213c97732fb8df05b66a5d523508))
+
 ## [0.4.14](https://github.com/programisto-labs/edrm-user/compare/v0.4.13...v0.4.14) (2025-07-29)
 
 
