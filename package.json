@@ -26,11 +26,15 @@
   },
   "homepage": "https://github.com/programisto-labs/edrm-user#readme",
   "dependencies": {
+    "@programisto/endurance-core": "^1.0.0",
     "bcrypt": "^5.1.1",
     "chai": "^5.2.0",
-    "@programisto/endurance-core": "^1.0.0",
+    "jsonwebtoken": "^9.0.2",
+    "passport": "^0.7.0",
     "passport-azure-ad": "^4.3.5",
     "passport-azure-ad-oauth2": "^0.0.4",
+    "passport-jwt": "^4.0.1",
+    "passport-local": "^1.0.0",
     "tsc-watch": "^6.2.1"
   },
   "devDependencies": {

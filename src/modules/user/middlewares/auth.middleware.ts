@@ -155,10 +155,10 @@ class CustomAuth extends EnduranceAuth {
 
       passport.use('azure_ad_oauth2', new AzureAdOAuth2Strategy({
         clientID: clientId,
-        clientSecret: clientSecret,
-        callbackURL: callbackURL,
-        resource: resource,
-        tenant: tenant,
+        clientSecret,
+        callbackURL,
+        resource,
+        tenant,
         allowHttpForRedirectUrl: process.env.NODE_ENV === 'development'
       },
         async function (accessToken: string, refreshToken: string, params: any, profile: any, done: any) {
