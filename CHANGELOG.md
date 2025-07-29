@@ -1,3 +1,10 @@
+## [0.4.16](https://github.com/programisto-labs/edrm-user/compare/v0.4.15...v0.4.16) (2025-07-29)
+
+
+### Bug Fixes
+
+* bump version to resolve npm conflict ([631c821](https://github.com/programisto-labs/edrm-user/commit/631c82165e3793e27599fc65338a47791c7e50e3))
+
 ## [0.4.15](https://github.com/programisto-labs/edrm-user/compare/v0.4.14...v0.4.15) (2025-07-29)
 
 
