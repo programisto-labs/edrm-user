@@ -1,3 +1,11 @@
+## [0.4.14](https://github.com/programisto-labs/edrm-user/compare/v0.4.13...v0.4.14) (2025-07-29)
+
+
+### Bug Fixes
+
+* upgrade endurance ([4c83aae](https://github.com/programisto-labs/edrm-user/commit/4c83aaef4db1dad3c495012dc457739ee908bd1f))
+* upgrade endurance ([77feef1](https://github.com/programisto-labs/edrm-user/commit/77feef13cb00489636695cb5f666b49f98c25288))
+
 ## [0.4.13](https://github.com/programisto-labs/edrm-user/compare/v0.4.12...v0.4.13) (2025-06-16)
 
 
