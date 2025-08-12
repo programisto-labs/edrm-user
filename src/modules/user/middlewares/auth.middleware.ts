@@ -432,32 +432,33 @@ class CustomAuth extends EnduranceAuth {
       const { refreshToken } = req.body;
 
       if (!refreshToken) {
-        res.status(400).json({ message: 'Refresh token is required' });
+        if (!res.headersSent) {
+          res.status(400).json({ message: 'Refresh token is required' });
+        }
         return resolve({ accessToken: '' });
       }
 
       this.getStoredRefreshToken(refreshToken)
-        .then(storedRefreshToken => {
-          if (!storedRefreshToken) {
-            res.status(401).json({ message: 'Invalid refresh token' });
-            return resolve({ accessToken: '' });
-          }
-
-          return this.getUserById(storedRefreshToken.userId);
-        })
         .then(user => {
           if (!user) {
-            res.status(401).json({ message: 'Invalid refresh token' });
+            if (!res.headersSent) {
+              res.status(401).json({ message: 'Invalid refresh token' });
+            }
             return resolve({ accessToken: '' });
           }
 
           const newToken = this.generateToken(user);
-          res.json({ accessToken: newToken });
+          if (!res.headersSent) {
+            res.json({ accessToken: newToken });
+          }
           resolve({ accessToken: newToken });
         })
         .catch(err => {
           const message = err instanceof Error ? err.message : 'Unknown error';
-          res.status(500).json({ message: 'Error refreshing token', error: message });
+          console.log(`Error refreshing token: ${message}`);
+          if (!res.headersSent) {
+            res.status(500).json({ message: 'Error refreshing token', error: message });
+          }
           resolve({ accessToken: '' });
         });
     });

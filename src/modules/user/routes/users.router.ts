@@ -1,7 +1,6 @@
 import { EnduranceRouter, EnduranceRequest, Response, NextFunction, type SecurityOptions, enduranceEmitter as emitter, enduranceEventTypes as eventTypes, EnduranceAuthMiddleware, EnduranceDocumentType } from '@programisto/endurance-core';
 import User from '../models/user.model.js';
 import Role from '../models/role.model.js';
-import Permission from '../models/permission.model.js';
 import crypto from 'crypto';
 
 // Fonction utilitaire pour le hachage MD5 simple
@@ -137,16 +136,6 @@ class UserRouter extends EnduranceRouter {
       try {
         const user = await User.findById(req.user._id)
           .select('-password -refreshToken')
-          .populate({
-            path: 'roles',
-            model: Role,
-            options: { strictPopulate: false }
-          })
-          .populate({
-            path: 'roles.permissions',
-            model: Permission,
-            options: { strictPopulate: false }
-          })
           .exec() as unknown as UserDocument;
 
         if (!user) {
@@ -154,27 +143,25 @@ class UserRouter extends EnduranceRouter {
           return;
         }
 
-        const permissions = [];
-        if (user.roles && Array.isArray(user.roles)) {
-          for (const role of user.roles) {
-            if (role && role.permissions && Array.isArray(role.permissions)) {
-              for (const permission of role.permissions) {
-                const permissionData = await Permission.findOne({ _id: permission });
-                if (permissionData) {
-                  permissions.push(simpleHash(permissionData.name, user.firstname));
-                }
-              }
-            }
+        // Utilisation des fonctions utilitaires pour récupérer les données complètes
+        const rolesWithDetails = await (User as any).getRolesWithDetails(user._id.toString());
+        const userPermissions = await (User as any).getUserPermissions(user._id.toString());
+        // Hash des permissions
+        const hashedPermissions = [];
+        for (const permission of userPermissions) {
+          if (permission && permission.name) {
+            hashedPermissions.push(simpleHash(permission.name, user.firstname));
           }
         }
+
         res.json({
           id: user._id,
           email: user.email,
           firstname: user.firstname,
           lastname: user.lastname,
           name: user.name,
-          roles: Array.isArray(user.roles) ? user.roles.map(role => role ? simpleHash(role.name, user.firstname) : null).filter(Boolean) : [],
-          permissions,
+          roles: rolesWithDetails.map((role: any) => simpleHash(role.name, user.firstname)),
+          permissions: hashedPermissions,
           createdAt: user.createdAt,
           updatedAt: user.updatedAt
         });
@@ -248,7 +235,7 @@ class UserRouter extends EnduranceRouter {
       res.json({ message: 'Role assigned successfully', user });
     });
 
-    this.post('/refresh-token', authenticatedRoutes, async (req: EnduranceRequest, res: Response, next: NextFunction) => {
+    this.post('/refresh-token', publicRoutes, async (req: EnduranceRequest, res: Response, next: NextFunction) => {
       try {
         if (!this.authMiddleware?.auth) {
           throw new Error('Auth middleware not initialized');

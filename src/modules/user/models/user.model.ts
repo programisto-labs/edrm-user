@@ -1,8 +1,10 @@
 import { EnduranceSchema, EnduranceModelType, EnduranceDocumentType } from '@programisto/endurance-core';
 import bcrypt from 'bcrypt';
 import Role from './role.model.js';
+import Permission from './permission.model.js';
 import { UserType } from '../../../types/user.js';
-import { RoleType } from '../../../types/role.js';
+import { RoleType, RoleApiType } from '../../../types/role.js';
+import { PermissionApiType } from '../../../types/permission.js';
 
 class User extends EnduranceSchema implements UserType {
   @EnduranceModelType.prop({
@@ -69,6 +71,67 @@ class User extends EnduranceSchema implements UserType {
   }
 }
 
+// Fonctions utilitaires pour récupérer les rôles et permissions
+/**
+ * Récupère les rôles complets d'un utilisateur
+ * @param userId - L'ID de l'utilisateur
+ * @returns Promise<RoleApiType[]> - Les rôles avec leurs informations complètes (sans IDs techniques)
+ */
+export async function getRolesWithDetails(userId: string): Promise<RoleApiType[]> {
+  const user = await UserModel.findById(userId);
+
+  if (!user || !user.roles || !Array.isArray(user.roles)) {
+    return [];
+  }
+
+  const roleDetails = [];
+  for (const roleId of user.roles) {
+    const role = await Role.findById(roleId);
+    if (role) {
+      // Récupérer les permissions complètes du rôle (sans les IDs techniques)
+      const permissions = [];
+      if (role.permissions && Array.isArray(role.permissions)) {
+        for (const permissionId of role.permissions) {
+          const permission = await Permission.findById(permissionId);
+          if (permission) {
+            permissions.push({
+              name: permission.name,
+              description: permission.description
+            });
+          }
+        }
+      }
+
+      roleDetails.push({
+        name: role.name,
+        permissions: permissions
+      });
+    }
+  }
+  return roleDetails;
+}
+
+/**
+ * Récupère les permissions d'un utilisateur
+ * @param userId - L'ID de l'utilisateur
+ * @returns Promise<PermissionApiType[]> - Les permissions uniques de l'utilisateur (sans IDs techniques)
+ */
+export async function getUserPermissions(userId: string): Promise<PermissionApiType[]> {
+  const roles = await getRolesWithDetails(userId);
+  const permissionsMap = new Map();
+
+  for (const role of roles) {
+    if (role.permissions && Array.isArray(role.permissions)) {
+      for (const permission of role.permissions) {
+        // Utiliser le nom comme clé pour éviter les doublons
+        permissionsMap.set(permission.name, permission);
+      }
+    }
+  }
+
+  return Array.from(permissionsMap.values());
+}
+
 EnduranceModelType.pre<User>('save', async function (this: EnduranceDocumentType<User>, next: (err?: Error) => void) {
   if (this.isModified('password') || (this.isNew && this.password)) {
     const hashedPassword = await bcrypt.hash(this.password!, 10);
@@ -87,4 +150,9 @@ EnduranceModelType.pre<User>('save', async function (this: EnduranceDocumentType
 });
 
 const UserModel = EnduranceModelType.getModelForClass(User);
+
+// Ajouter les fonctions au modèle pour s'assurer qu'elles sont disponibles
+(UserModel as any).getRolesWithDetails = getRolesWithDetails;
+(UserModel as any).getUserPermissions = getUserPermissions;
+
 export default UserModel;
