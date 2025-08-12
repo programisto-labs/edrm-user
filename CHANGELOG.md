@@ -1,3 +1,10 @@
+## [0.4.17](https://github.com/programisto-labs/edrm-user/compare/v0.4.16...v0.4.17) (2025-08-12)
+
+
+### Bug Fixes
+
+* fix overlaping schema ([3a39eb9](https://github.com/programisto-labs/edrm-user/commit/3a39eb9ee1cf4cdea11cdc4c8f207fe65d93f916))
+
 ## [0.4.16](https://github.com/programisto-labs/edrm-user/compare/v0.4.15...v0.4.16) (2025-07-29)
 
 
