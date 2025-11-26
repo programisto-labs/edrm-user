@@ -305,8 +305,8 @@ class CustomAuth extends EnduranceAuth {
         if (err || !user) {
           res.status(400).json({
             message: 'Something is not right',
-            user: user,
-            err: err
+            user,
+            err
           });
           return resolve();
         }
@@ -334,8 +334,8 @@ class CustomAuth extends EnduranceAuth {
         if (err || !user) {
           res.status(400).json({
             message: 'Something is not right',
-            user: user,
-            err: err
+            user,
+            err
           });
           return resolve();
         }
@@ -406,7 +406,7 @@ class CustomAuth extends EnduranceAuth {
             if (!res.headersSent) {
               res.json({
                 accessToken: token,
-                refreshToken: refreshToken,
+                refreshToken,
                 user: {
                   email: user.email,
                   id: user._id

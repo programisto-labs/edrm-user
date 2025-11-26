@@ -104,7 +104,7 @@ export async function getRolesWithDetails(userId: string): Promise<RoleApiType[]
 
       roleDetails.push({
         name: role.name,
-        permissions: permissions
+        permissions
       });
     }
   }
