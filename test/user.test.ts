@@ -1,7 +1,5 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it } from 'mocha';
 
-describe('Basic', () => {
-  it('works', () => {
-    expect(true).toBe(true);
-  });
+describe('dummy', () => {
+  it('should pass', () => { });
 });
