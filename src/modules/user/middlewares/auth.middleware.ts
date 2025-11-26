@@ -3,7 +3,7 @@ import Role from '../models/role.model.js';
 import jwt from 'jsonwebtoken';
 import passport from 'passport';
 import crypto from 'crypto';
-import { EnduranceAuthMiddleware, EnduranceAccessControl, EnduranceAuth, EnduranceDocumentType } from '@programisto/endurance-core';
+import { EnduranceAuthMiddleware, EnduranceAccessControl, EnduranceAuth, EnduranceDocumentType } from '@programisto/endurance';
 import { Request, Response, NextFunction } from 'express';
 import { Strategy as AzureAdOAuth2Strategy } from 'passport-azure-ad-oauth2';
 import { Strategy as JwtStrategy, ExtractJwt } from 'passport-jwt';

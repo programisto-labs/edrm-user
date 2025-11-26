@@ -1,5 +1,5 @@
 import Permission from '../models/permission.model.js';
-import { EnduranceRouter, EnduranceAuthMiddleware, type SecurityOptions, EnduranceRequest } from '@programisto/endurance-core';
+import { EnduranceRouter, EnduranceAuthMiddleware, type SecurityOptions, EnduranceRequest } from '@programisto/endurance';
 
 class PermissionRouter extends EnduranceRouter {
     constructor() {
