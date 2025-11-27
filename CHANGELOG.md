@@ -1,3 +1,10 @@
+## [0.4.18](https://github.com/programisto-labs/edrm-user/compare/v0.4.17...v0.4.18) (2025-11-27)
+
+
+### Bug Fixes
+
+* build version ([b911e89](https://github.com/programisto-labs/edrm-user/commit/b911e891767d7df9692b917675b8e58c185c9af3))
+
 ## [0.4.17](https://github.com/programisto-labs/edrm-user/compare/v0.4.16...v0.4.17) (2025-08-12)
 
 
