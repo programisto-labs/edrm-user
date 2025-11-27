@@ -1,4 +1,5 @@
 import { EnduranceRouter, EnduranceRequest, Response, NextFunction, type SecurityOptions, enduranceEmitter as emitter, enduranceEventTypes as eventTypes, EnduranceAuthMiddleware, EnduranceDocumentType } from '@programisto/endurance';
+// new endurance import
 import User from '../models/user.model.js';
 import Role from '../models/role.model.js';
 import crypto from 'crypto';
