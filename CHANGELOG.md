@@ -1,3 +1,10 @@
+## [0.4.20](https://github.com/programisto-labs/edrm-user/compare/v0.4.19...v0.4.20) (2025-12-16)
+
+
+### Bug Fixes
+
+* remove sh slop ([b0c2e41](https://github.com/programisto-labs/edrm-user/commit/b0c2e41a837c2d78d6baeeb2a105769b790e93f9))
+
 ## [0.4.19](https://github.com/programisto-labs/edrm-user/compare/v0.4.18...v0.4.19) (2025-12-16)
 
 
