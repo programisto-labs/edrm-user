@@ -1,3 +1,10 @@
+## [0.4.19](https://github.com/programisto-labs/edrm-user/compare/v0.4.18...v0.4.19) (2025-12-16)
+
+
+### Bug Fixes
+
+* fix check permissions ([7256ed7](https://github.com/programisto-labs/edrm-user/commit/7256ed721cb1d9fd075913e04ba7dad506ad65d1))
+
 ## [0.4.18](https://github.com/programisto-labs/edrm-user/compare/v0.4.17...v0.4.18) (2025-11-27)
 
 
