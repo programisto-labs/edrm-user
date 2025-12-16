@@ -1,5 +1,6 @@
 import User from '../models/user.model.js';
 import Role from '../models/role.model.js';
+import Permission from '../models/permission.model.js';
 import jwt from 'jsonwebtoken';
 import passport from 'passport';
 import crypto from 'crypto';
@@ -56,29 +57,118 @@ class CustomAccessControl extends EnduranceAccessControl {
         return;
       }
 
-      if (user.role?.name === 'superadmin') {
+      // Récupérer l'utilisateur complet avec ses rôles et permissions
+      const fullUser = await User.findById(user._id || user.id)
+        .populate({
+          path: 'roles',
+          model: Role,
+          populate: {
+            path: 'permissions',
+            model: Permission
+          }
+        });
+
+      if (!fullUser) {
+        res.status(401).json({ message: 'User not found' });
+        return;
+      }
+
+      // Vérifier si l'utilisateur a le rôle superadmin
+      const userRoles = fullUser.roles || [];
+      const isSuperAdmin = userRoles.some((role: any) => role?.name === 'superadmin');
+
+      if (isSuperAdmin) {
         return next();
       }
 
-      if (!user.role) {
-        await User.populate(user, {
-          path: 'role',
-          model: Role,
-          options: { strictPopulate: false }
-        });
+      // Collecter toutes les permissions de tous les rôles de l'utilisateur
+      const userPermissions: string[] = [];
+      for (const role of userRoles) {
+        if (role && role.permissions && Array.isArray(role.permissions)) {
+          for (const permission of role.permissions) {
+            if (permission && permission.name && !userPermissions.includes(permission.name)) {
+              userPermissions.push(permission.name);
+            }
+          }
+        }
       }
 
-      const userPermissions = user.role?.permissions?.map((perm: any) => perm.name) || [];
+      // Vérifier que l'utilisateur a toutes les permissions requises
       const hasPermission = permissions.every((perm) => userPermissions.includes(perm));
 
       if (!hasPermission) {
-        res.status(403).json({ message: 'Access denied: Insufficient permissions' });
+        res.status(403).json({
+          message: 'Access denied: Insufficient permissions',
+          required: permissions,
+          userPermissions: userPermissions
+        });
         return;
       }
 
       next();
     } catch (error) {
+      console.error('Error checking user permissions:', error);
       next(error);
+    }
+  };
+
+  // Méthode que le framework Endurance peut appeler pour vérifier les permissions
+  // Retourne un middleware Express (pour utilisation comme middleware)
+  public checkPermissions = (permissions: string[]): ((req: Request, res: Response, next: NextFunction) => Promise<void>) => {
+    return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+      return this.checkUserPermissions(permissions, req, res, next);
+    };
+  };
+
+  // Méthode alternative que le framework peut appeler directement
+  // (pour compatibilité avec différentes signatures possibles)
+  public hasPermission = async (permissions: string[], req: Request): Promise<boolean> => {
+    try {
+      const user = req.user as any;
+      if (!user) {
+        return false;
+      }
+
+      // Récupérer l'utilisateur complet avec ses rôles et permissions
+      const fullUser = await User.findById(user._id || user.id)
+        .populate({
+          path: 'roles',
+          model: Role,
+          populate: {
+            path: 'permissions',
+            model: Permission
+          }
+        });
+
+      if (!fullUser) {
+        return false;
+      }
+
+      // Vérifier si l'utilisateur a le rôle superadmin
+      const userRoles = fullUser.roles || [];
+      const isSuperAdmin = userRoles.some((role: any) => role?.name === 'superadmin');
+
+      if (isSuperAdmin) {
+        return true;
+      }
+
+      // Collecter toutes les permissions de tous les rôles de l'utilisateur
+      const userPermissions: string[] = [];
+      for (const role of userRoles) {
+        if (role && role.permissions && Array.isArray(role.permissions)) {
+          for (const permission of role.permissions) {
+            if (permission && permission.name && !userPermissions.includes(permission.name)) {
+              userPermissions.push(permission.name);
+            }
+          }
+        }
+      }
+
+      // Vérifier que l'utilisateur a toutes les permissions requises
+      return permissions.every((perm) => userPermissions.includes(perm));
+    } catch (error) {
+      console.error('Error checking permissions:', error);
+      return false;
     }
   };
 
