@@ -39,6 +39,19 @@ class UserRouter extends EnduranceRouter {
     };
 
     // Routes publiques
+    /**
+     * @swagger
+     * /auth-methods:
+     *   get:
+     *     summary: Lister les méthodes d'authentification disponibles
+     *     description: Renvoie les méthodes d'authentification activées côté serveur (local, Azure).
+     *     tags: [Auth]
+     *     responses:
+     *       200:
+     *         description: Méthodes disponibles retournées
+     *       500:
+     *         description: Erreur serveur
+     */
     this.get('/auth-methods', publicRoutes, async (req: EnduranceRequest, res: Response) => {
       const authMethods = {
         local: process.env.LOGIN_LOCAL_ACTIVATED === 'true',
@@ -47,12 +60,56 @@ class UserRouter extends EnduranceRouter {
       res.json({ authMethods });
     });
 
+    /**
+     * @swagger
+     * /find:
+     *   get:
+     *     summary: Trouver un utilisateur par email
+     *     description: Recherche un utilisateur via son email et retourne son document.
+     *     tags: [Utilisateurs]
+     *     parameters:
+     *       - in: query
+     *         name: email
+     *         schema:
+     *           type: string
+     *         required: true
+     *         description: Email de l'utilisateur recherché
+     *     responses:
+     *       200:
+     *         description: Utilisateur trouvé
+     *       404:
+     *         description: Utilisateur introuvable
+     *       500:
+     *         description: Erreur serveur
+     */
     this.get('/find', publicRoutes, async (req: EnduranceRequest, res: Response) => {
       const { email } = req.query;
       const user = await User.findOne({ email });
       res.json(user);
     });
 
+    /**
+     * @swagger
+     * /register:
+     *   post:
+     *     summary: Créer un nouvel utilisateur
+     *     description: Enregistre un utilisateur et déclenche l'événement userRegistered.
+     *     tags: [Utilisateurs]
+     *     requestBody:
+     *       required: true
+     *       content:
+     *         application/json:
+     *           schema:
+     *             type: object
+     *             description: Corps du nouvel utilisateur
+     *     responses:
+     *       201:
+     *         description: Utilisateur créé
+     *       400:
+     *         description: Requête invalide
+     *       500:
+     *         description: Erreur serveur
+     */
     this.post('/register', publicRoutes, async (req: EnduranceRequest, res: Response) => {
       const user = new User(req.body);
       await user.save();
@@ -61,11 +118,48 @@ class UserRouter extends EnduranceRouter {
     });
 
     // Routes authentifiées
+    /**
+     * @swagger
+     * /check-auth:
+     *   get:
+     *     summary: Vérifier l'authentification
+     *     description: Vérifie que l'utilisateur est authentifié et renvoie ok si c'est le cas.
+     *     tags: [Auth]
+     *     security:
+     *       - bearerAuth: []
+     *     responses:
+     *       200:
+     *         description: Authentification valide
+     *       401:
+     *         description: Non authentifié
+     */
     this.get('/check-auth', authenticatedRoutes, async (req: EnduranceRequest, res: Response) => {
       res.json({ result: 'ok' });
     });
 
     if (process.env.LOGIN_LOCAL_ACTIVATED === 'true') {
+      /**
+       * @swagger
+       * /login/local:
+       *   post:
+       *     summary: Connexion locale
+       *     description: Authentifie l'utilisateur via la stratégie locale et génère les tokens.
+       *     tags: [Auth]
+       *     requestBody:
+       *       required: true
+       *       content:
+       *         application/json:
+       *           schema:
+       *             type: object
+       *             description: Identifiants de connexion
+       *     responses:
+       *       200:
+       *         description: Connexion réussie
+       *       401:
+       *         description: Identifiants invalides
+       *       500:
+       *         description: Erreur serveur
+       */
       this.post('/login/local', publicRoutes, async (req: EnduranceRequest, res: Response, next: NextFunction) => {
         try {
           if (!this.authMiddleware?.auth) {
@@ -79,6 +173,30 @@ class UserRouter extends EnduranceRouter {
         }
       });
 
+      /**
+       * @swagger
+       * /request-password-reset:
+       *   post:
+       *     summary: Demander une réinitialisation de mot de passe
+       *     description: Génère un token de réinitialisation pour l'utilisateur correspondant à l'email.
+       *     tags: [Auth]
+       *     requestBody:
+       *       required: true
+       *       content:
+       *         application/json:
+       *           schema:
+       *             type: object
+       *             properties:
+       *               email:
+       *                 type: string
+       *     responses:
+       *       200:
+       *         description: Token généré
+       *       404:
+       *         description: Utilisateur introuvable
+       *       500:
+       *         description: Erreur serveur
+       */
       this.post('/request-password-reset', publicRoutes, async (req: EnduranceRequest, res: Response) => {
         const { email } = req.body;
         const user = await User.findOne({ email });
@@ -98,6 +216,32 @@ class UserRouter extends EnduranceRouter {
         res.json({ message: 'Password reset token generated', resetToken });
       });
 
+      /**
+       * @swagger
+       * /reset-password:
+       *   post:
+       *     summary: Réinitialiser le mot de passe
+       *     description: Applique un nouveau mot de passe à partir d'un token de réinitialisation valide.
+       *     tags: [Auth]
+       *     requestBody:
+       *       required: true
+       *       content:
+       *         application/json:
+       *           schema:
+       *             type: object
+       *             properties:
+       *               resetToken:
+       *                 type: string
+       *               newPassword:
+       *                 type: string
+       *     responses:
+       *       200:
+       *         description: Mot de passe réinitialisé
+       *       400:
+       *         description: Token invalide ou expiré
+       *       500:
+       *         description: Erreur serveur
+       */
       this.post('/reset-password', publicRoutes, async (req: EnduranceRequest, res: Response) => {
         const { resetToken, newPassword } = req.body;
         const user = await User.findOne({ resetToken, resetTokenExpiration: { $gt: Date.now() } });
@@ -128,6 +272,25 @@ class UserRouter extends EnduranceRouter {
       permissions: ['manageUsers']
     };
 
+    /**
+     * @swagger
+     * /profile:
+     *   get:
+     *     summary: Récupérer le profil utilisateur
+     *     description: Retourne les informations de profil de l'utilisateur authentifié, rôles et permissions hachées.
+     *     tags: [Profil]
+     *     security:
+     *       - bearerAuth: []
+     *     responses:
+     *       200:
+     *         description: Profil retourné
+     *       401:
+     *         description: Non authentifié
+     *       404:
+     *         description: Utilisateur introuvable
+     *       500:
+     *         description: Erreur serveur
+     */
     this.get('/profile', authenticatedRoutes, async (req: EnduranceRequest, res: Response) => {
       if (!req.user) {
         res.status(401).json({ message: 'User not authenticated' });
@@ -172,6 +335,38 @@ class UserRouter extends EnduranceRouter {
       }
     });
 
+    /**
+     * @swagger
+     * /profile:
+     *   patch:
+     *     summary: Mettre à jour le profil utilisateur
+     *     description: Met à jour les champs autorisés du profil de l'utilisateur connecté.
+     *     tags: [Profil]
+     *     security:
+     *       - bearerAuth: []
+     *     requestBody:
+     *       required: true
+     *       content:
+     *         application/json:
+     *           schema:
+     *             type: object
+     *             properties:
+     *               name:
+     *                 type: string
+     *               email:
+     *                 type: string
+     *               password:
+     *                 type: string
+     *     responses:
+     *       200:
+     *         description: Profil mis à jour
+     *       400:
+     *         description: Champs invalides
+     *       401:
+     *         description: Non authentifié
+     *       500:
+     *         description: Erreur serveur
+     */
     this.patch('/profile', authenticatedRoutes, async (req: EnduranceRequest, res: Response) => {
       if (!req.user) {
         res.status(401).json({ message: 'User not authenticated' });
@@ -201,6 +396,25 @@ class UserRouter extends EnduranceRouter {
       res.json(req.user);
     });
 
+    /**
+     * @swagger
+     * /profile:
+     *   delete:
+     *     summary: Supprimer un utilisateur (admin)
+     *     description: Supprime l'utilisateur authentifié, nécessite la permission manageUsers.
+     *     tags: [Profil]
+     *     security:
+     *       - bearerAuth: []
+     *     responses:
+     *       200:
+     *         description: Utilisateur supprimé
+     *       401:
+     *         description: Non authentifié
+     *       403:
+     *         description: Permissions insuffisantes
+     *       500:
+     *         description: Erreur serveur
+     */
     this.delete('/profile', adminRoutes, async (req: EnduranceRequest, res: Response) => {
       if (!req.user) {
         res.status(401).json({ message: 'User not authenticated' });
@@ -211,6 +425,36 @@ class UserRouter extends EnduranceRouter {
       res.json({ message: 'User deleted successfully' });
     });
 
+    /**
+     * @swagger
+     * /assign-role:
+     *   post:
+     *     summary: Assigner un rôle à un utilisateur
+     *     description: Ajoute un rôle existant à un utilisateur. Permission manageUsers requise.
+     *     tags: [Rôles]
+     *     security:
+     *       - bearerAuth: []
+     *     requestBody:
+     *       required: true
+     *       content:
+     *         application/json:
+     *           schema:
+     *             type: object
+     *             properties:
+     *               userId:
+     *                 type: string
+     *               roleId:
+     *                 type: string
+     *     responses:
+     *       200:
+     *         description: Rôle assigné
+     *       400:
+     *         description: Données manquantes
+     *       404:
+     *         description: Utilisateur ou rôle introuvable
+     *       500:
+     *         description: Erreur serveur
+     */
     this.post('/assign-role', adminRoutes, async (req: EnduranceRequest, res: Response) => {
       const { userId, roleId } = req.body;
 
@@ -236,6 +480,28 @@ class UserRouter extends EnduranceRouter {
       res.json({ message: 'Role assigned successfully', user });
     });
 
+    /**
+     * @swagger
+     * /refresh-token:
+     *   post:
+     *     summary: Rafraîchir le token d'accès
+     *     description: Utilise le refresh token pour générer un nouveau JWT.
+     *     tags: [Auth]
+     *     requestBody:
+     *       required: true
+     *       content:
+     *         application/json:
+     *           schema:
+     *             type: object
+     *             description: Refresh token fourni
+     *     responses:
+     *       200:
+     *         description: Token rafraîchi
+     *       401:
+     *         description: Refresh token invalide
+     *       500:
+     *         description: Erreur serveur
+     */
     this.post('/refresh-token', publicRoutes, async (req: EnduranceRequest, res: Response, next: NextFunction) => {
       try {
         if (!this.authMiddleware?.auth) {
@@ -247,6 +513,23 @@ class UserRouter extends EnduranceRouter {
       }
     });
 
+    /**
+     * @swagger
+     * /revoke-token:
+     *   post:
+     *     summary: Révoquer le refresh token
+     *     description: Invalide le refresh token de l'utilisateur authentifié.
+     *     tags: [Auth]
+     *     security:
+     *       - bearerAuth: []
+     *     responses:
+     *       200:
+     *         description: Token révoqué
+     *       401:
+     *         description: Non authentifié
+     *       500:
+     *         description: Erreur serveur
+     */
     this.post('/revoke-token', authenticatedRoutes, async (req: EnduranceRequest, res: Response, next: NextFunction) => {
       try {
         if (!this.authMiddleware?.auth) {
@@ -273,6 +556,21 @@ class UserRouter extends EnduranceRouter {
       requireAuth: false
     };
 
+    /**
+     * @swagger
+     * /login/azure:
+     *   get:
+     *     summary: Connexion Azure
+     *     description: Authentifie l'utilisateur via Azure AD et génère les tokens.
+     *     tags: [Auth Azure]
+     *     responses:
+     *       200:
+     *         description: Connexion Azure réussie
+     *       302:
+     *         description: Redirection vers l'URL de callback Azure
+     *       500:
+     *         description: Erreur serveur
+     */
     this.get('/login/azure', publicRoutes, async (req: EnduranceRequest, res: Response, next: NextFunction) => {
       try {
         if (!this.authMiddleware?.auth) {
@@ -290,6 +588,28 @@ class UserRouter extends EnduranceRouter {
       }
     });
 
+    /**
+     * @swagger
+     * /login/azure/exchange:
+     *   post:
+     *     summary: Échanger le code Azure contre des tokens
+     *     description: Génère les tokens à partir du code d'autorisation Azure reçu.
+     *     tags: [Auth Azure]
+     *     requestBody:
+     *       required: true
+     *       content:
+     *         application/json:
+     *           schema:
+     *             type: object
+     *             description: Charge utile de l'échange de code
+     *     responses:
+     *       200:
+     *         description: Tokens générés
+     *       400:
+     *         description: Code invalide
+     *       500:
+     *         description: Erreur serveur
+     */
     this.post('/login/azure/exchange', publicRoutes, async (req: EnduranceRequest, res: Response, next: NextFunction) => {
       try {
         if (!this.authMiddleware?.auth) {
