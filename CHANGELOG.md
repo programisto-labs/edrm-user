@@ -1,3 +1,10 @@
+## [0.4.21](https://github.com/programisto-labs/edrm-user/compare/v0.4.20...v0.4.21) (2025-12-17)
+
+
+### Bug Fixes
+
+* add swagger ([a195970](https://github.com/programisto-labs/edrm-user/commit/a1959701e08d7a5b1b72d69586ec671a34375fe7))
+
 ## [0.4.20](https://github.com/programisto-labs/edrm-user/compare/v0.4.19...v0.4.20) (2025-12-16)
 
 
