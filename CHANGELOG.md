@@ -1,3 +1,10 @@
+## [0.4.23](https://github.com/programisto-labs/edrm-user/compare/v0.4.22...v0.4.23) (2026-02-10)
+
+
+### Bug Fixes
+
+* redirect url for multi entities ([92487ee](https://github.com/programisto-labs/edrm-user/commit/92487eea42943ea65fab71992b96835654631311))
+
 ## [0.4.22](https://github.com/programisto-labs/edrm-user/compare/v0.4.21...v0.4.22) (2026-02-10)
 
 
