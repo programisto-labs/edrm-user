@@ -1,3 +1,10 @@
+## [0.4.22](https://github.com/programisto-labs/edrm-user/compare/v0.4.21...v0.4.22) (2026-02-10)
+
+
+### Bug Fixes
+
+* callback login with multi entities ([bef2910](https://github.com/programisto-labs/edrm-user/commit/bef2910c237d2a8d1e30f2f12e15d6acc94459ec))
+
 ## [0.4.21](https://github.com/programisto-labs/edrm-user/compare/v0.4.20...v0.4.21) (2025-12-17)
 
 
