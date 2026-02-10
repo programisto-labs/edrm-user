@@ -208,22 +208,27 @@ class CustomAccessControl extends EnduranceAccessControl {
 }
 
 /**
- * Construit l'URL de callback Azure à partir de la requête courante (Host / X-Forwarded-*).
- * Permet le login multi-domaine : sur api.lahorde.tech le redirect_uri envoyé à Microsoft
- * pointe vers api.lahorde.tech au lieu d'une URL fixe (ex. api.programisto.fr).
+ * URL de callback Azure (redirect_uri envoyé à Microsoft) = URL frontend où l'utilisateur
+ * atterrit après login (ex. https://my.lahorde.tech/login/azure-callback), pas l'API.
+ * - GET /login/azure : prise depuis req.query.redirectUrl (envoyé par le frontend).
+ * - POST /login/azure/exchange : prise depuis req.body.redirectUri (envoyé par la page callback).
+ * Sinon repli sur AZURE_CALLBACK_URL (ex. https://my.programisto.fr/login/azure-callback).
  */
 function getAzureCallbackUrlFromRequest(req: Request): string | undefined {
-  const base = process.env.AZURE_CALLBACK_URL;
-  if (!base || typeof base !== 'string') return undefined;
-  try {
-    const u = new URL(base);
-    const protocol = (req.get('x-forwarded-proto') as string)?.split(',')[0]?.trim() || req.protocol || 'https';
-    const host = (req.get('x-forwarded-host') as string)?.split(',')[0]?.trim() || req.get('host') || '';
-    if (!host) return base;
-    return `${protocol}://${host}${u.pathname}${u.search}`;
-  } catch {
-    return base;
+  const fromQuery = typeof req.query?.redirectUrl === 'string' ? req.query.redirectUrl : null;
+  const fromBody = typeof (req as any).body?.redirectUri === 'string' ? (req as any).body.redirectUri : null;
+  const candidate = fromQuery ?? fromBody;
+  if (candidate) {
+    try {
+      const u = new URL(candidate);
+      if (u.protocol === 'https:' || (process.env.NODE_ENV === 'development' && u.protocol === 'http:')) {
+        return u.toString();
+      }
+    } catch {
+      // ignore invalid URL
+    }
   }
+  return process.env.AZURE_CALLBACK_URL;
 }
 
 class CustomAuth extends EnduranceAuth {
