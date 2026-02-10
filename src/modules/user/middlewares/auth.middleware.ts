@@ -207,6 +207,25 @@ class CustomAccessControl extends EnduranceAccessControl {
   };
 }
 
+/**
+ * Construit l'URL de callback Azure à partir de la requête courante (Host / X-Forwarded-*).
+ * Permet le login multi-domaine : sur api.lahorde.tech le redirect_uri envoyé à Microsoft
+ * pointe vers api.lahorde.tech au lieu d'une URL fixe (ex. api.programisto.fr).
+ */
+function getAzureCallbackUrlFromRequest(req: Request): string | undefined {
+  const base = process.env.AZURE_CALLBACK_URL;
+  if (!base || typeof base !== 'string') return undefined;
+  try {
+    const u = new URL(base);
+    const protocol = (req.get('x-forwarded-proto') as string)?.split(',')[0]?.trim() || req.protocol || 'https';
+    const host = (req.get('x-forwarded-host') as string)?.split(',')[0]?.trim() || req.get('host') || '';
+    if (!host) return base;
+    return `${protocol}://${host}${u.pathname}${u.search}`;
+  } catch {
+    return base;
+  }
+}
+
 class CustomAuth extends EnduranceAuth {
   constructor() {
     super();
@@ -419,8 +438,12 @@ class CustomAuth extends EnduranceAuth {
   };
 
   public authenticateAzureAndGenerateTokens = async (req: RequestWithUser, res: Response, next: NextFunction): Promise<void> => {
+    const dynamicCallbackUrl = getAzureCallbackUrlFromRequest(req);
+    const authOptions: { session: boolean; callbackURL?: string } = { session: false };
+    if (dynamicCallbackUrl) authOptions.callbackURL = dynamicCallbackUrl;
+
     return new Promise((resolve) => {
-      passport.authenticate('azure_ad_oauth2', { session: false }, async (err: any, user: UserDocument, info: any) => {
+      passport.authenticate('azure_ad_oauth2', authOptions, async (err: any, user: UserDocument, info: any) => {
         if (err || !user) {
           res.status(400).json({
             message: 'Something is not right',
@@ -449,9 +472,13 @@ class CustomAuth extends EnduranceAuth {
   };
 
   public generateAzureTokens = (req: RequestWithUser, res: Response, next: NextFunction): Promise<void> => {
+    const dynamicCallbackUrl = getAzureCallbackUrlFromRequest(req);
+    const authOptions: { session: boolean; callbackURL?: string } = { session: false };
+    if (dynamicCallbackUrl) authOptions.callbackURL = dynamicCallbackUrl;
+
     return new Promise((resolve) => {
       console.log('Starting Azure authentication...');
-      passport.authenticate('azure_ad_oauth2', { session: false }, async (err: any, user: UserDocument, info: any) => {
+      passport.authenticate('azure_ad_oauth2', authOptions, async (err: any, user: UserDocument, info: any) => {
         if (err) {
           console.error('Azure authentication error:', err);
           if (!res.headersSent) {
