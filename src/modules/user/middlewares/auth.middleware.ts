@@ -4,6 +4,7 @@ import Permission from '../models/permission.model.js';
 import jwt from 'jsonwebtoken';
 import passport from 'passport';
 import crypto from 'crypto';
+import bcrypt from 'bcrypt';
 import { EnduranceAuthMiddleware, EnduranceAccessControl, EnduranceAuth, EnduranceDocumentType } from '@programisto/endurance';
 import { Request, Response, NextFunction } from 'express';
 import { Strategy as AzureAdOAuth2Strategy } from 'passport-azure-ad-oauth2';
@@ -387,7 +388,12 @@ class CustomAuth extends EnduranceAuth {
   };
 
   public validatePassword = async (user: any, password: string): Promise<boolean> => {
-    return user.comparePassword(password);
+    if (typeof user?.comparePassword === 'function') {
+      return user.comparePassword(password);
+    }
+    const hashed = user?.password;
+    if (!hashed) return false;
+    return bcrypt.compare(password, hashed);
   };
 
   public storeRefreshToken = async (email: string, refreshToken: string): Promise<void> => {
