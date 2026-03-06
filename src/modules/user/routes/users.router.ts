@@ -3,6 +3,7 @@ import { EnduranceRouter, EnduranceRequest, Response, NextFunction, type Securit
 import User from '../models/user.model.js';
 import Role from '../models/role.model.js';
 import crypto from 'crypto';
+import bcrypt from 'bcrypt';
 
 // Fonction utilitaire pour le hachage MD5 simple
 const simpleHash = (str: string, salt: string): string => {
@@ -111,7 +112,11 @@ class UserRouter extends EnduranceRouter {
      *         description: Erreur serveur
      */
     this.post('/register', publicRoutes, async (req: EnduranceRequest, res: Response) => {
-      const user = new User(req.body);
+      const payload = { ...req.body };
+      if (payload.password && !payload.password.startsWith('$2')) {
+        payload.password = await bcrypt.hash(payload.password, 10);
+      }
+      const user = new User(payload);
       await user.save();
       emitter.emit(eventTypes.userRegistered, user);
       res.status(201).json({ message: 'User registered successfully' });

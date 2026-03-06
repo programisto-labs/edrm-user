@@ -133,8 +133,9 @@ export async function getUserPermissions(userId: string): Promise<PermissionApiT
 }
 
 EnduranceModelType.pre<User>('save', async function (this: EnduranceDocumentType<User>, next: (err?: Error) => void) {
-  if (this.isModified('password') || (this.isNew && this.password)) {
-    const hashedPassword = await bcrypt.hash(this.password!, 10);
+  const pwd = this.password;
+  if ((this.isModified('password') || (this.isNew && pwd)) && pwd && !String(pwd).startsWith('$2')) {
+    const hashedPassword = await bcrypt.hash(String(pwd), 10);
     this.password = hashedPassword;
   }
 
