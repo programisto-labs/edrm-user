@@ -324,6 +324,7 @@ class CustomAuth extends EnduranceAuth {
   }
 
   private configureLocalStrategy(): void {
+    const self = this;
     passport.use(
       new LocalStrategy(
         {
@@ -332,8 +333,8 @@ class CustomAuth extends EnduranceAuth {
         },
         async (email: string, password: string, done: any) => {
           try {
-            const user = await this.getUserById({ email });
-            if (!user || !(await this.validatePassword(user, password))) {
+            const user = await self.getUserById({ email });
+            if (!user || !(await self.validatePassword(user, password))) {
               return done(null, false, { message: 'Incorrect email or password.' });
             }
             return done(null, user);
@@ -417,10 +418,12 @@ class CustomAuth extends EnduranceAuth {
     return new Promise((resolve) => {
       passport.authenticate('local', { session: false }, async (err: any, user: UserDocument, info: any) => {
         if (err || !user) {
-          res.status(400).json({
-            message: 'Something is not right',
-            user,
-            err
+          const message = info?.message || (err?.message ?? 'Something is not right');
+          const status = message === 'Incorrect email or password.' ? 401 : 400;
+          res.status(status).json({
+            message,
+            ...(info && { info: typeof info === 'object' ? info : { message: String(info) } }),
+            ...(err && { err: err?.message ? { message: err.message } : err })
           });
           return resolve();
         }
@@ -435,7 +438,12 @@ class CustomAuth extends EnduranceAuth {
           const refreshToken = this.generateRefreshToken();
 
           await this.storeRefreshToken((user as any).email, refreshToken);
-          res.json({ token, refreshToken });
+          res.json({
+            accessToken: token,
+            token,
+            refreshToken,
+            user: { email: (user as any).email, id: (user as any)._id }
+          });
           resolve();
         });
       })(req, res, next);
