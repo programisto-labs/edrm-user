@@ -1,3 +1,10 @@
+## [0.4.24](https://github.com/programisto-labs/edrm-user/compare/v0.4.23...v0.4.24) (2026-03-06)
+
+
+### Bug Fixes
+
+* local strategy ([3f99af2](https://github.com/programisto-labs/edrm-user/commit/3f99af2d65ca23a9ac553ebb0ede200421e94370))
+
 ## [0.4.23](https://github.com/programisto-labs/edrm-user/compare/v0.4.22...v0.4.23) (2026-02-10)
 
 
