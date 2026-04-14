@@ -1,3 +1,10 @@
+## [0.4.27](https://github.com/programisto-labs/edrm-user/compare/v0.4.26...v0.4.27) (2026-04-14)
+
+
+### Bug Fixes
+
+* entity change ([0800670](https://github.com/programisto-labs/edrm-user/commit/0800670c56400b41eea0e9e13a8164085c25a421))
+
 ## [0.4.26](https://github.com/programisto-labs/edrm-user/compare/v0.4.25...v0.4.26) (2026-03-06)
 
 
