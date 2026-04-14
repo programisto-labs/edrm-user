@@ -215,9 +215,22 @@ class CustomAccessControl extends EnduranceAccessControl {
  * - POST /login/azure/exchange : prise depuis req.body.redirectUri (envoyé par la page callback).
  * Sinon repli sur AZURE_CALLBACK_URL (ex. https://my.programisto.fr/login/azure-callback).
  */
+function firstQueryOrBodyString(val: unknown): string | null {
+  if (typeof val === 'string') {
+    const t = val.trim();
+    return t || null;
+  }
+  if (Array.isArray(val)) {
+    for (const item of val) {
+      if (typeof item === 'string' && item.trim()) return item.trim();
+    }
+  }
+  return null;
+}
+
 function getAzureCallbackUrlFromRequest(req: Request): string | undefined {
-  const fromQuery = typeof req.query?.redirectUrl === 'string' ? req.query.redirectUrl : null;
-  const fromBody = typeof (req as any).body?.redirectUri === 'string' ? (req as any).body.redirectUri : null;
+  const fromQuery = firstQueryOrBodyString((req as any).query?.redirectUrl);
+  const fromBody = firstQueryOrBodyString((req as any).body?.redirectUri);
   const candidate = fromQuery ?? fromBody;
   if (candidate) {
     try {
