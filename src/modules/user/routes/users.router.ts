@@ -650,7 +650,7 @@ class UserRouter extends EnduranceRouter {
     });
 
     this.post('/login/passkey/options', publicRoutes, async (req: EnduranceRequest, res: Response) => {
-      const email = typeof req.body?.email === 'string' ? req.body.email.trim().toLowerCase() : '';
+      const email = typeof req.body?.email === 'string' ? req.body.email.trim() : '';
       if (!email) {
         res.status(400).json({ message: 'Email is required' });
         return;
@@ -675,7 +675,7 @@ class UserRouter extends EnduranceRouter {
     });
 
     this.post('/login/passkey/verify', publicRoutes, async (req: EnduranceRequest, res: Response) => {
-      const email = typeof req.body?.email === 'string' ? req.body.email.trim().toLowerCase() : '';
+      const email = typeof req.body?.email === 'string' ? req.body.email.trim() : '';
       const response = req.body?.response as AuthenticationResponseJSON | undefined;
       if (!email || !response) {
         res.status(400).json({ message: 'Email and passkey authentication response are required' });
