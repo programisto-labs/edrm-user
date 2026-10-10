@@ -2,9 +2,35 @@ import { EnduranceSchema, EnduranceModelType, EnduranceDocumentType } from '@pro
 import bcrypt from 'bcrypt';
 import Role from './role.model.js';
 import Permission from './permission.model.js';
-import { UserType } from '../types/user.js';
+import { UserType, PasskeyCredentialType } from '../types/user.js';
 import { RoleType, RoleApiType } from '../types/role.js';
 import { PermissionApiType } from '../types/permission.js';
+
+class PasskeyCredential implements PasskeyCredentialType {
+  @EnduranceModelType.prop({ required: true })
+  credentialId!: string;
+
+  @EnduranceModelType.prop({ required: true })
+  publicKey!: string;
+
+  @EnduranceModelType.prop({ required: true, default: 0 })
+  counter!: number;
+
+  @EnduranceModelType.prop({ type: () => [String], default: [] })
+  transports?: string[];
+
+  @EnduranceModelType.prop({ required: true })
+  deviceType!: 'singleDevice' | 'multiDevice';
+
+  @EnduranceModelType.prop({ required: true, default: false })
+  backedUp!: boolean;
+
+  @EnduranceModelType.prop()
+  name?: string;
+
+  @EnduranceModelType.prop({ required: true, default: () => new Date() })
+  createdAt!: Date;
+}
 
 class User extends EnduranceSchema implements UserType {
   @EnduranceModelType.prop({
@@ -48,6 +74,21 @@ class User extends EnduranceSchema implements UserType {
 
   @EnduranceModelType.prop({ default: null })
   resetTokenExpiration?: Date;
+
+  @EnduranceModelType.prop({ type: () => [PasskeyCredential], default: [] })
+  passkeys?: PasskeyCredential[];
+
+  @EnduranceModelType.prop({ default: null, select: false })
+  passkeyRegistrationChallenge?: string;
+
+  @EnduranceModelType.prop({ default: null, select: false })
+  passkeyRegistrationChallengeExpiration?: Date;
+
+  @EnduranceModelType.prop({ default: null, select: false })
+  passkeyAuthenticationChallenge?: string;
+
+  @EnduranceModelType.prop({ default: null, select: false })
+  passkeyAuthenticationChallengeExpiration?: Date;
 
   get name(): string {
     return this._name || `${this.firstname} ${this.lastname}`;
