@@ -4,6 +4,7 @@ import {
   verifyAuthenticationResponse,
   verifyRegistrationResponse
 } from '@simplewebauthn/server';
+import { Buffer } from 'buffer';
 import type {
   AuthenticationResponseJSON,
   RegistrationResponseJSON,

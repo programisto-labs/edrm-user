@@ -6,17 +6,18 @@ import {
   getPasskeyConfig
 } from '../src/modules/user/services/passkey.service.js';
 
-const originalEnv = { ...process.env };
+const runtimeProcess = (globalThis as any).process;
+const originalEnv = { ...runtimeProcess.env };
 
 describe('passkey service', () => {
   afterEach(() => {
-    process.env = { ...originalEnv };
+    runtimeProcess.env = { ...originalEnv };
   });
 
   it('validates and returns the relying party configuration', () => {
-    process.env.PASSKEY_RP_ID = 'example.com';
-    process.env.PASSKEY_ORIGIN = 'https://app.example.com';
-    process.env.PASSKEY_RP_NAME = 'Example';
+    runtimeProcess.env.PASSKEY_RP_ID = 'example.com';
+    runtimeProcess.env.PASSKEY_ORIGIN = 'https://app.example.com';
+    runtimeProcess.env.PASSKEY_RP_NAME = 'Example';
 
     expect(getPasskeyConfig()).to.deep.equal({
       rpID: 'example.com',
@@ -26,15 +27,15 @@ describe('passkey service', () => {
   });
 
   it('rejects an insecure remote origin', () => {
-    process.env.PASSKEY_RP_ID = 'example.com';
-    process.env.PASSKEY_ORIGIN = 'http://example.com';
+    runtimeProcess.env.PASSKEY_RP_ID = 'example.com';
+    runtimeProcess.env.PASSKEY_ORIGIN = 'http://example.com';
 
     expect(() => getPasskeyConfig()).to.throw('HTTPS origin');
   });
 
   it('generates discoverable registration options and excludes existing credentials', async () => {
-    process.env.PASSKEY_RP_ID = 'localhost';
-    process.env.PASSKEY_ORIGIN = 'http://localhost:3000';
+    runtimeProcess.env.PASSKEY_RP_ID = 'localhost';
+    runtimeProcess.env.PASSKEY_ORIGIN = 'http://localhost:3000';
 
     const options = await createPasskeyRegistrationOptions({
       _id: { toString: () => '507f1f77bcf86cd799439011' },
@@ -60,8 +61,8 @@ describe('passkey service', () => {
   });
 
   it('generates authentication options restricted to the account passkeys', async () => {
-    process.env.PASSKEY_RP_ID = 'localhost';
-    process.env.PASSKEY_ORIGIN = 'http://localhost:3000';
+    runtimeProcess.env.PASSKEY_RP_ID = 'localhost';
+    runtimeProcess.env.PASSKEY_ORIGIN = 'http://localhost:3000';
 
     const options = await createPasskeyAuthenticationOptions([{
       credentialId: 'registered-credential',
