@@ -4,6 +4,14 @@ import User from '../models/user.model.js';
 import Role from '../models/role.model.js';
 import crypto from 'crypto';
 import bcrypt from 'bcrypt';
+import type { AuthenticationResponseJSON, RegistrationResponseJSON } from '@simplewebauthn/server';
+import {
+  PASSKEY_CHALLENGE_TTL_MS,
+  createPasskeyAuthenticationOptions,
+  createPasskeyRegistrationOptions,
+  verifyPasskeyAuthentication,
+  verifyPasskeyRegistration
+} from '../services/passkey.service.js';
 
 // Fonction utilitaire pour le hachage MD5 simple
 const simpleHash = (str: string, salt: string): string => {
@@ -56,7 +64,8 @@ class UserRouter extends EnduranceRouter {
     this.get('/auth-methods', publicRoutes, async (req: EnduranceRequest, res: Response) => {
       const authMethods = {
         local: process.env.LOGIN_LOCAL_ACTIVATED === 'true',
-        azure: process.env.LOGIN_AZURE_ACTIVATED === 'true'
+        azure: process.env.LOGIN_AZURE_ACTIVATED === 'true',
+        passkey: process.env.LOGIN_PASSKEY_ACTIVATED === 'true'
       };
       res.json({ authMethods });
     });
@@ -85,7 +94,7 @@ class UserRouter extends EnduranceRouter {
      */
     this.get('/find', publicRoutes, async (req: EnduranceRequest, res: Response) => {
       const { email } = req.query;
-      const user = await User.findOne({ email });
+      const user = await User.findOne({ email }).select('-passkeys');
       res.json(user);
     });
 
@@ -269,6 +278,10 @@ class UserRouter extends EnduranceRouter {
 
     if (process.env.LOGIN_AZURE_ACTIVATED === 'true') {
       this.setupAzureRoutes();
+    }
+
+    if (process.env.LOGIN_PASSKEY_ACTIVATED === 'true') {
+      this.setupPasskeyRoutes();
     }
 
     // Routes protégées avec permissions
@@ -544,6 +557,224 @@ class UserRouter extends EnduranceRouter {
       } catch (error) {
         next(error);
       }
+    });
+  }
+
+  private setupPasskeyRoutes(): void {
+    const publicRoutes: SecurityOptions = { requireAuth: false };
+    const authenticatedRoutes: SecurityOptions = { requireAuth: true };
+
+    this.post('/passkeys/register/options', authenticatedRoutes, async (req: EnduranceRequest, res: Response) => {
+      if (!req.user) {
+        res.status(401).json({ message: 'User not authenticated' });
+        return;
+      }
+
+      try {
+        const user = await User.findById(req.user._id);
+        if (!user) {
+          res.status(404).json({ message: 'User not found' });
+          return;
+        }
+
+        const options = await createPasskeyRegistrationOptions(user as any);
+        user.passkeyRegistrationChallenge = options.challenge;
+        user.passkeyRegistrationChallengeExpiration = new Date(Date.now() + PASSKEY_CHALLENGE_TTL_MS);
+        await user.save();
+        res.json(options);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'Unable to create passkey registration options';
+        res.status(400).json({ message });
+      }
+    });
+
+    this.post('/passkeys/register/verify', authenticatedRoutes, async (req: EnduranceRequest, res: Response) => {
+      if (!req.user) {
+        res.status(401).json({ message: 'User not authenticated' });
+        return;
+      }
+
+      const response = req.body?.response as RegistrationResponseJSON | undefined;
+      if (!response) {
+        res.status(400).json({ message: 'Passkey registration response is required' });
+        return;
+      }
+
+      try {
+        const user = await User.findOneAndUpdate(
+          {
+            _id: req.user._id,
+            passkeyRegistrationChallenge: { $ne: null },
+            passkeyRegistrationChallengeExpiration: { $gt: new Date() }
+          },
+          {
+            $unset: {
+              passkeyRegistrationChallenge: 1,
+              passkeyRegistrationChallengeExpiration: 1
+            }
+          }
+        ).select('+passkeyRegistrationChallenge +passkeyRegistrationChallengeExpiration');
+
+        if (!user?.passkeyRegistrationChallenge) {
+          res.status(400).json({ message: 'Passkey registration challenge is missing or expired' });
+          return;
+        }
+
+        const passkey = await verifyPasskeyRegistration(
+          response,
+          user.passkeyRegistrationChallenge,
+          typeof req.body?.name === 'string' ? req.body.name : undefined
+        );
+
+        const duplicate = await User.exists({ 'passkeys.credentialId': passkey.credentialId });
+        if (duplicate) {
+          res.status(409).json({ message: 'This passkey is already registered' });
+          return;
+        }
+
+        await User.updateOne({ _id: user._id }, { $push: { passkeys: passkey } });
+        res.status(201).json({
+          message: 'Passkey registered successfully',
+          passkey: {
+            credentialId: passkey.credentialId,
+            name: passkey.name,
+            deviceType: passkey.deviceType,
+            backedUp: passkey.backedUp,
+            createdAt: passkey.createdAt
+          }
+        });
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'Passkey registration failed';
+        res.status(400).json({ message });
+      }
+    });
+
+    this.post('/login/passkey/options', publicRoutes, async (req: EnduranceRequest, res: Response) => {
+      const email = typeof req.body?.email === 'string' ? req.body.email.trim().toLowerCase() : '';
+      if (!email) {
+        res.status(400).json({ message: 'Email is required' });
+        return;
+      }
+
+      try {
+        const user = await User.findOne({ email });
+        if (!user?.passkeys?.length) {
+          res.status(404).json({ message: 'No passkey is registered for this account' });
+          return;
+        }
+
+        const options = await createPasskeyAuthenticationOptions(user.passkeys as any);
+        user.passkeyAuthenticationChallenge = options.challenge;
+        user.passkeyAuthenticationChallengeExpiration = new Date(Date.now() + PASSKEY_CHALLENGE_TTL_MS);
+        await user.save();
+        res.json(options);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'Unable to create passkey authentication options';
+        res.status(400).json({ message });
+      }
+    });
+
+    this.post('/login/passkey/verify', publicRoutes, async (req: EnduranceRequest, res: Response) => {
+      const email = typeof req.body?.email === 'string' ? req.body.email.trim().toLowerCase() : '';
+      const response = req.body?.response as AuthenticationResponseJSON | undefined;
+      if (!email || !response) {
+        res.status(400).json({ message: 'Email and passkey authentication response are required' });
+        return;
+      }
+
+      try {
+        const user = await User.findOneAndUpdate(
+          {
+            email,
+            passkeyAuthenticationChallenge: { $ne: null },
+            passkeyAuthenticationChallengeExpiration: { $gt: new Date() }
+          },
+          {
+            $unset: {
+              passkeyAuthenticationChallenge: 1,
+              passkeyAuthenticationChallengeExpiration: 1
+            }
+          }
+        ).select('+passkeyAuthenticationChallenge +passkeyAuthenticationChallengeExpiration');
+
+        if (!user?.passkeyAuthenticationChallenge) {
+          res.status(400).json({ message: 'Passkey authentication challenge is missing or expired' });
+          return;
+        }
+
+        const passkey = user.passkeys?.find(item => item.credentialId === response.id);
+        if (!passkey) {
+          res.status(401).json({ message: 'Passkey is not registered for this account' });
+          return;
+        }
+
+        const newCounter = await verifyPasskeyAuthentication(
+          response,
+          user.passkeyAuthenticationChallenge,
+          passkey as any
+        );
+        await User.updateOne(
+          { _id: user._id },
+          { $set: { 'passkeys.$[passkey].counter': newCounter } },
+          { arrayFilters: [{ 'passkey.credentialId': passkey.credentialId }] }
+        );
+
+        const auth = this.authMiddleware?.auth as any;
+        if (!auth) {
+          throw new Error('Auth middleware not initialized');
+        }
+        const token = auth.generateToken(user);
+        const refreshToken = auth.generateRefreshToken();
+        await auth.storeRefreshToken(user.email, refreshToken);
+        emitter.emit(eventTypes.userLoggedIn, user);
+        res.json({
+          accessToken: token,
+          token,
+          refreshToken,
+          user: { email: user.email, id: user._id }
+        });
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'Passkey authentication failed';
+        res.status(401).json({ message });
+      }
+    });
+
+    this.get('/passkeys', authenticatedRoutes, async (req: EnduranceRequest, res: Response) => {
+      if (!req.user) {
+        res.status(401).json({ message: 'User not authenticated' });
+        return;
+      }
+
+      const user = await User.findById(req.user._id);
+      if (!user) {
+        res.status(404).json({ message: 'User not found' });
+        return;
+      }
+
+      res.json((user.passkeys || []).map(passkey => ({
+        credentialId: passkey.credentialId,
+        name: passkey.name,
+        deviceType: passkey.deviceType,
+        backedUp: passkey.backedUp,
+        createdAt: passkey.createdAt
+      })));
+    });
+
+    this.delete('/passkeys/:credentialId', authenticatedRoutes, async (req: EnduranceRequest, res: Response) => {
+      if (!req.user) {
+        res.status(401).json({ message: 'User not authenticated' });
+        return;
+      }
+
+      const result = await User.updateOne(
+        { _id: req.user._id, 'passkeys.credentialId': req.params.credentialId },
+        { $pull: { passkeys: { credentialId: req.params.credentialId } } }
+      );
+      if (result.modifiedCount === 0) {
+        res.status(404).json({ message: 'Passkey not found' });
+        return;
+      }
+      res.json({ message: 'Passkey deleted successfully' });
     });
   }
 
