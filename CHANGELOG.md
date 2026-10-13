@@ -1,3 +1,18 @@
+# [0.5.0](https://github.com/programisto-labs/edrm-user/compare/v0.4.28...v0.5.0) (2026-10-13)
+
+
+### Bug Fixes
+
+* honor rejected google id token claims ([6cbda8b](https://github.com/programisto-labs/edrm-user/commit/6cbda8bf153393afe973c9486240c44bb67d6f1c))
+* preserve email case for passkey login ([edaf908](https://github.com/programisto-labs/edrm-user/commit/edaf908115c9959f1409ed6dccd73e0f3a0a24a0))
+* verify Google OAuth identity claims ([b124cec](https://github.com/programisto-labs/edrm-user/commit/b124cec545b61094ec8110d837e9cc83e94f6d97))
+
+
+### Features
+
+* add passkey authentication support ([93e0a51](https://github.com/programisto-labs/edrm-user/commit/93e0a51dbeb422aec980bd01a862a629a9b59111))
+* **auth:** add Google OAuth helper for entity SSO ([ec6e4d8](https://github.com/programisto-labs/edrm-user/commit/ec6e4d84bbc3f7981939de0ac3d0b235a447e516))
+
 ## [0.4.28](https://github.com/programisto-labs/edrm-user/compare/v0.4.27...v0.4.28) (2026-05-29)
 
 
