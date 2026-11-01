@@ -1,3 +1,10 @@
+## [0.5.1](https://github.com/programisto-labs/edrm-user/compare/v0.5.0...v0.5.1) (2026-11-01)
+
+
+### Bug Fixes
+
+* **auth:** stop leaking the password reset token ([ad7d721](https://github.com/programisto-labs/edrm-user/commit/ad7d72173645e8764e86df99902a475ed787cd62))
+
 # [0.5.0](https://github.com/programisto-labs/edrm-user/compare/v0.4.28...v0.5.0) (2026-10-13)
 
 
