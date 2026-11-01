@@ -12,6 +12,14 @@ import {
   verifyPasskeyAuthentication,
   verifyPasskeyRegistration
 } from '../services/passkey.service.js';
+import { requestPasswordReset, resetPassword, type ResetDeps } from '../lib/password-reset.js';
+
+const resetDeps: ResetDeps = {
+  findOne: (filter) => User.findOne(filter) as any,
+  emit: (event, payload) => { emitter.emit(event, payload); }
+};
+
+const clientIp = (req: EnduranceRequest): string => String((req as any).ip || (req as any).socket?.remoteAddress || 'unknown');
 
 // Fonction utilitaire pour le hachage MD5 simple
 const simpleHash = (str: string, salt: string): string => {
@@ -94,7 +102,7 @@ class UserRouter extends EnduranceRouter {
      */
     this.get('/find', publicRoutes, async (req: EnduranceRequest, res: Response) => {
       const { email } = req.query;
-      const user = await User.findOne({ email }).select('-passkeys');
+      const user = await User.findOne({ email }).select('-passkeys -refreshToken -resetToken -resetTokenExpiration -passkeyRegistrationChallenge -passkeyAuthenticationChallenge');
       res.json(user);
     });
 
@@ -205,29 +213,15 @@ class UserRouter extends EnduranceRouter {
        *                 type: string
        *     responses:
        *       200:
-       *         description: Token généré
-       *       404:
-       *         description: Utilisateur introuvable
+       *         description: Réponse générique identique que l'email existe ou non (le token part uniquement par l'événement passwordResetRequested)
+       *       429:
+       *         description: Trop de demandes
        *       500:
        *         description: Erreur serveur
        */
       this.post('/request-password-reset', publicRoutes, async (req: EnduranceRequest, res: Response) => {
-        const { email } = req.body;
-        const user = await User.findOne({ email });
-
-        if (!user) {
-          res.status(404).json({ message: 'User not found' });
-          return;
-        }
-
-        const resetToken = crypto.randomBytes(40).toString('hex');
-        user.resetToken = resetToken;
-        user.resetTokenExpiration = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes from now
-        await user.save();
-
-        emitter.emit('passwordResetRequested', { user, resetToken });
-
-        res.json({ message: 'Password reset token generated', resetToken });
+        const result = await requestPasswordReset(resetDeps, clientIp(req), req.body?.email);
+        res.status(result.status).json(result.body);
       });
 
       /**
@@ -257,22 +251,8 @@ class UserRouter extends EnduranceRouter {
        *         description: Erreur serveur
        */
       this.post('/reset-password', publicRoutes, async (req: EnduranceRequest, res: Response) => {
-        const { resetToken, newPassword } = req.body;
-        const user = await User.findOne({ resetToken, resetTokenExpiration: { $gt: Date.now() } });
-
-        if (!user) {
-          res.status(400).json({ message: 'Invalid or expired reset token' });
-          return;
-        }
-
-        user.password = newPassword;
-        user.resetToken = undefined;
-        user.resetTokenExpiration = undefined;
-        await user.save();
-
-        emitter.emit('passwordReset', user);
-
-        res.json({ message: 'Password has been reset successfully' });
+        const result = await resetPassword(resetDeps, clientIp(req), req.body?.resetToken, req.body?.newPassword);
+        res.status(result.status).json(result.body);
       });
     }
 

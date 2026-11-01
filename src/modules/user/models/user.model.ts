@@ -36,8 +36,9 @@ class User extends EnduranceSchema implements UserType {
   @EnduranceModelType.prop({
     required: false,
     unique: true,
-    get: function (this: any) {
-      return this.id || this.uid;
+    get: function (this: any, value?: number) {
+      // Use the raw value: reading `this.id` here re-enters this getter forever.
+      return value || this.get('uid', null, { getters: false });
     }
   })
   public id!: number;
@@ -180,16 +181,18 @@ EnduranceModelType.pre<User>('save', async function (this: EnduranceDocumentType
     this.password = hashedPassword;
   }
 
-  if (!this.id && (this as any).uid) {
-    this.id = (this as any).uid;
-  }
-
-  if (!this.id) {
-    const lastUser = await UserModel.findOne().sort({ id: -1 });
-    this.id = lastUser ? lastUser.id + 1 : 1;
+  // Read raw values: the `id` getter (`this.id || this.uid`) recurses when called on a document.
+  const doc = this as any;
+  const rawId = doc.get('id', null, { getters: false });
+  const rawUid = doc.get('uid', null, { getters: false });
+  if (!rawId && rawUid) {
+    doc.set('id', rawUid);
+  } else if (!rawId) {
+    const lastUser: any = await UserModel.findOne({ id: { $ne: null } }).sort({ id: -1 }).select('id').lean();
+    doc.set('id', lastUser?.id ? lastUser.id + 1 : 1);
   }
   next();
-});
+})(User); // the decorator must be applied to the class, otherwise the hook is never registered
 
 const UserModel = EnduranceModelType.getModelForClass(User);
 
