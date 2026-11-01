@@ -55,3 +55,18 @@ Passkeys are enabled with `LOGIN_PASSKEY_ACTIVATED=true` and require:
 - /role/:role-id/assign-permision : Assign a permission a specific role
 - /permission (Default Rest CRUD) : Manage permissions
 
+
+## Password reset delivery
+
+`POST /request-password-reset` never puts the clear reset token on the event bus.
+The host app registers one in-process handler that receives it (e.g. to send the email):
+
+```ts
+import { setPasswordResetDeliveryHandler } from '@programisto/edrm-user/password-reset';
+
+setPasswordResetDeliveryHandler(async ({ user, resetToken, expiresAt }) => {
+  // send the email; never log resetToken
+});
+```
+
+The global `passwordResetRequested` event only carries `{ userId, entityId, expiresAt }`.

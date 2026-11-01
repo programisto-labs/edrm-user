@@ -9,7 +9,8 @@
   "main": "app.js",
   "exports": {
     ".": "./dist/app.js",
-    "./google-oauth": "./dist/modules/user/lib/google-oauth.helper.js"
+    "./google-oauth": "./dist/modules/user/lib/google-oauth.helper.js",
+    "./password-reset": "./dist/modules/user/lib/password-reset.js"
   },
   "scripts": {
     "start": "node ./dist/bin/www",
