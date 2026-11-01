@@ -78,10 +78,56 @@ export interface ResetUserDoc {
   save: () => Promise<unknown>;
 }
 
+/** Internal-only delivery input: carries the clear token, never broadcast on the event bus. */
+export interface PasswordResetDelivery {
+  user: ResetUserDoc;
+  resetToken: string;
+  expiresAt: Date;
+}
+
+export type PasswordResetDeliveryHandler = (delivery: PasswordResetDelivery) => void | Promise<void>;
+
+/** Global (broadcast) payload of passwordResetRequested: no token, no password hash. */
+export interface PasswordResetRequestedEvent {
+  userId: string | null;
+  entityId: string | null;
+  expiresAt: Date;
+}
+
+let deliveryHandler: PasswordResetDeliveryHandler | null = null;
+
+/**
+ * Registers the single in-process handler (e.g. the host app's mailer) that receives the clear
+ * reset token. Direct function call: listeners on the event bus (webhooks, distributed events,
+ * onAny) never see the token. Returns an unregister function.
+ */
+export function setPasswordResetDeliveryHandler (handler: PasswordResetDeliveryHandler | null): () => void {
+  deliveryHandler = handler;
+  return () => { if (deliveryHandler === handler) deliveryHandler = null; };
+}
+
 export interface ResetDeps {
   findOne: (filter: Record<string, unknown>) => Promise<ResetUserDoc | null>;
   emit: (event: string, payload: unknown) => void;
   now?: () => number;
+  /** Overrides the registered delivery handler (tests). */
+  deliver?: PasswordResetDeliveryHandler;
+}
+
+const idOf = (v: unknown): string | null => (v === undefined || v === null || v === '' ? null : String(v));
+
+async function deliverResetToken (deps: ResetDeps, delivery: PasswordResetDelivery): Promise<void> {
+  const handler = deps.deliver ?? deliveryHandler;
+  if (!handler) {
+    console.warn('[edrm-user] password reset requested but no delivery handler is registered; no email sent.');
+    return;
+  }
+  try {
+    await handler(delivery);
+  } catch {
+    // Generic message only: the error may carry the token or the link.
+    console.error('[edrm-user] password reset delivery handler failed.');
+  }
 }
 
 export type ResetResult = { status: number; body: { message: string } };
@@ -89,8 +135,8 @@ export type ResetResult = { status: number; body: { message: string } };
 const tooMany: ResetResult = { status: 429, body: { message: 'Too many requests, please try again later.' } };
 
 /**
- * Generates a single-use token, stores only its sha256, emits passwordResetRequested
- * (with the clear token, for the mailer) and always answers the same generic 200.
+ * Generates a single-use token, stores only its sha256, hands the clear token to the internal
+ * delivery handler, emits passwordResetRequested WITHOUT the token, and always answers the same generic 200.
  */
 export async function requestPasswordReset (deps: ResetDeps, ip: string, rawEmail: unknown): Promise<ResetResult> {
   const email = normalizeEmail(rawEmail);
@@ -109,7 +155,15 @@ export async function requestPasswordReset (deps: ResetDeps, ip: string, rawEmai
   user.resetTokenExpiration = new Date(now + RESET_TOKEN_TTL_MS);
   await user.save();
 
-  deps.emit('passwordResetRequested', { user, resetToken, expiresAt: user.resetTokenExpiration });
+  const expiresAt = user.resetTokenExpiration;
+  await deliverResetToken(deps, { user, resetToken, expiresAt });
+  const anyUser = user as unknown as { _id?: unknown; id?: unknown; entityId?: unknown };
+  const event: PasswordResetRequestedEvent = {
+    userId: idOf(anyUser._id ?? anyUser.id),
+    entityId: idOf(anyUser.entityId),
+    expiresAt
+  };
+  deps.emit('passwordResetRequested', event);
   return generic;
 }
 

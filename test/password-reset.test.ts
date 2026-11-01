@@ -2,6 +2,7 @@ import 'reflect-metadata';
 import { beforeEach, describe, it } from 'mocha';
 import { expect } from 'chai';
 import bcrypt from 'bcrypt';
+import { EventEmitter } from 'events';
 import {
   GENERIC_RESET_MESSAGE,
   RESET_TOKEN_TTL_MS,
@@ -14,6 +15,8 @@ import {
   limiters,
   requestPasswordReset,
   resetPassword,
+  setPasswordResetDeliveryHandler,
+  type PasswordResetDelivery,
   type ResetDeps,
   type ResetUserDoc
 } from '../src/modules/user/lib/password-reset.js';
@@ -24,9 +27,11 @@ type Doc = ResetUserDoc & { saved: number };
 const makeStore = (now: { t: number }) => {
   const users: Doc[] = [];
   const events: Array<{ event: string; payload: any }> = [];
+  const deliveries: PasswordResetDelivery[] = [];
   const deps: ResetDeps = {
     now: () => now.t,
     emit: (event, payload) => { events.push({ event, payload }); },
+    deliver: (d) => { deliveries.push(d); },
     findOne: async (filter: any) => {
       if (filter.email) {
         const re = new RegExp(filter.email.$regex, filter.email.$options);
@@ -41,7 +46,7 @@ const makeStore = (now: { t: number }) => {
     users.push(u);
     return u;
   };
-  return { deps, events, add };
+  return { deps, events, deliveries, add };
 };
 
 const resetAllLimiters = () => Object.values(limiters).forEach((l) => l.reset());
@@ -70,7 +75,7 @@ describe('password reset', () => {
     await requestPasswordReset(store.deps, 'ip', 'known@example.com');
     const ev = store.events.find((e) => e.event === 'passwordResetRequested');
     expect(ev).not.to.equal(undefined);
-    const clear = ev!.payload.resetToken as string;
+    const clear = store.deliveries[0].resetToken;
     expect(u.resetToken).to.equal(hashResetToken(clear));
     expect(u.resetToken).not.to.equal(clear);
     const ttl = u.resetTokenExpiration!.getTime() - now.t;
@@ -110,7 +115,7 @@ describe('password reset', () => {
   it('resets with bcrypt, clears the token and refresh token, and refuses reuse', async () => {
     const u = store.add('known@example.com', { refreshToken: 'old-refresh' });
     await requestPasswordReset(store.deps, 'ip', 'known@example.com');
-    const clear = store.events[0].payload.resetToken as string;
+    const clear = store.deliveries[0].resetToken;
 
     const ok = await resetPassword(store.deps, 'ip', clear, 'NewPass1!');
     expect(ok.status).to.equal(200);
@@ -126,7 +131,7 @@ describe('password reset', () => {
   it('refuses an expired token and the stored hash used as a token', async () => {
     const u = store.add('known@example.com');
     await requestPasswordReset(store.deps, 'ip', 'known@example.com');
-    const clear = store.events[0].payload.resetToken as string;
+    const clear = store.deliveries[0].resetToken;
     expect((await resetPassword(store.deps, 'ip', u.resetToken, 'NewPass1!')).status).to.equal(400);
     now.t += RESET_TOKEN_TTL_MS + 1;
     expect((await resetPassword(store.deps, 'ip', clear, 'NewPass1!')).status).to.equal(400);
@@ -136,7 +141,7 @@ describe('password reset', () => {
     const u = store.add('known@example.com');
     await requestPasswordReset(store.deps, 'ip', 'known@example.com');
     const hashed = await bcrypt.hash('Already1!', 4);
-    await resetPassword(store.deps, 'ip', store.events[0].payload.resetToken, hashed);
+    await resetPassword(store.deps, 'ip', store.deliveries[0].resetToken, hashed);
     expect(u.password).to.equal(hashed);
   });
 
@@ -147,5 +152,78 @@ describe('password reset', () => {
     expect(l.hit('k')).to.equal(false);
     t.v = 1001;
     expect(l.hit('k')).to.equal(true);
+  });
+
+  describe('#1992 token never broadcast', () => {
+    const makeBus = () => {
+      // Same shape as endurance's emitter: named listeners + onAny-style global listeners.
+      const bus = new EventEmitter();
+      const seen: string[] = [];
+      const origEmit = bus.emit.bind(bus);
+      bus.emit = ((event: string, ...args: unknown[]) => {
+        seen.push(JSON.stringify([event, ...args]));
+        return origEmit(event, ...args);
+      }) as typeof bus.emit;
+      bus.on('passwordResetRequested', (p) => seen.push(JSON.stringify(p)));
+      return { bus, seen };
+    };
+
+    it('global payload carries only userId, entityId and expiresAt; the handler alone gets the token', async () => {
+      const { bus, seen } = makeBus();
+      const got: PasswordResetDelivery[] = [];
+      const unregister = setPasswordResetDeliveryHandler((d) => { got.push(d); });
+      try {
+        store.add('known@example.com', { _id: 'u1', entityId: 'e1', password: '$2b$10$hashhashhash' } as any);
+        const deps: ResetDeps = { ...store.deps, deliver: undefined, emit: (e, p) => { bus.emit(e, p); } };
+        await requestPasswordReset(deps, 'ip', 'known@example.com');
+        expect(got).to.have.length(1);
+        const token = got[0].resetToken;
+        expect(token).to.match(/^[0-9a-f]{64}$/);
+        expect(got[0].user.email).to.equal('known@example.com');
+        const ev = JSON.parse(seen[0])[1];
+        expect(Object.keys(ev).sort()).to.deep.equal(['entityId', 'expiresAt', 'userId']);
+        expect(ev.userId).to.equal('u1');
+        expect(ev.entityId).to.equal('e1');
+        for (const line of seen) {
+          expect(line).not.to.include(token);
+          expect(line).not.to.include(hashResetToken(token));
+          expect(line).not.to.include('$2b$10$');
+        }
+      } finally {
+        unregister();
+      }
+    });
+
+    it('no handler: no token anywhere, generic response, warning without secrets', async () => {
+      const { bus, seen } = makeBus();
+      store.add('known@example.com');
+      const warn = console.warn;
+      const logs: string[] = [];
+      console.warn = (...a: unknown[]) => { logs.push(a.join(' ')); };
+      try {
+        const res = await requestPasswordReset({ ...store.deps, deliver: undefined, emit: (e, p) => { bus.emit(e, p); } }, 'ip', 'known@example.com');
+        expect(res.body.message).to.equal(GENERIC_RESET_MESSAGE);
+      } finally {
+        console.warn = warn;
+      }
+      expect(logs.join('')).to.include('no delivery handler');
+      for (const line of [...seen, ...logs]) expect(line).not.to.match(/[0-9a-f]{64}/);
+    });
+
+    it('a throwing handler is logged generically and does not change the response', async () => {
+      store.add('known@example.com');
+      const err = console.error;
+      const logs: string[] = [];
+      console.error = (...a: unknown[]) => { logs.push(a.map(String).join(' ')); };
+      let token = '';
+      try {
+        const res = await requestPasswordReset({ ...store.deps, deliver: (d) => { token = d.resetToken; throw new Error(`smtp ${d.resetToken}`); } }, 'ip', 'known@example.com');
+        expect(res.status).to.equal(200);
+      } finally {
+        console.error = err;
+      }
+      expect(token).to.have.length(64);
+      expect(logs.join('')).not.to.include(token);
+    });
   });
 });
