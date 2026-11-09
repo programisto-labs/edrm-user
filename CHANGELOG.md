@@ -1,3 +1,10 @@
+# [0.6.0](https://github.com/programisto-labs/edrm-user/compare/v0.5.1...v0.6.0) (2026-11-09)
+
+
+### Features
+
+* **auth:** deliver the reset token through an internal handler, not the event bus ([b3df786](https://github.com/programisto-labs/edrm-user/commit/b3df786eab55da48e6df9384416d3648816eda73)), closes [programisto-labs/internal-portal#1992](https://github.com/programisto-labs/internal-portal/issues/1992)
+
 ## [0.5.1](https://github.com/programisto-labs/edrm-user/compare/v0.5.0...v0.5.1) (2026-11-01)
 
 
