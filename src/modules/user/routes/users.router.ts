@@ -100,9 +100,14 @@ class UserRouter extends EnduranceRouter {
      *       500:
      *         description: Erreur serveur
      */
-    this.get('/find', publicRoutes, async (req: EnduranceRequest, res: Response) => {
-      const { email } = req.query;
-      const user = await User.findOne({ email }).select('-passkeys -refreshToken -resetToken -resetTokenExpiration -passkeyRegistrationChallenge -passkeyAuthenticationChallenge');
+    // Annuaire : réservé aux gestionnaires d'utilisateurs, champs d'identité seulement (jamais les rôles).
+    this.get('/find', { requireAuth: true, permissions: ['manageUsers'] }, async (req: EnduranceRequest, res: Response) => {
+      const email = typeof req.query.email === 'string' ? req.query.email : '';
+      if (!email) {
+        res.status(400).json({ message: 'Email is required' });
+        return;
+      }
+      const user = await User.findOne({ email }).select('_id email firstname lastname');
       res.json(user);
     });
 
@@ -129,10 +134,21 @@ class UserRouter extends EnduranceRouter {
      *         description: Erreur serveur
      */
     this.post('/register', publicRoutes, async (req: EnduranceRequest, res: Response) => {
-      const payload = { ...req.body };
-      if (payload.password && !payload.password.startsWith('$2')) {
-        payload.password = await bcrypt.hash(payload.password, 10);
+      if (process.env.EDRM_USER_REGISTER_ENABLED === 'false') {
+        res.status(404).json({ message: 'Not found' });
+        return;
       }
+      // Seuls les champs d'identité sont acceptés : jamais de rôles, d'état ou de jeton choisis par l'appelant.
+      const body = req.body ?? {};
+      const payload: Record<string, unknown> = {};
+      for (const field of ['email', 'firstname', 'lastname', 'name']) {
+        if (typeof body[field] === 'string') payload[field] = body[field];
+      }
+      if (typeof payload.email !== 'string' || !payload.email.trim() || typeof body.password !== 'string' || !body.password) {
+        res.status(400).json({ message: 'Email and password are required' });
+        return;
+      }
+      payload.password = await bcrypt.hash(body.password, 10);
       const user = new User(payload);
       await user.save();
       emitter.emit(eventTypes.userRegistered, user);
@@ -371,7 +387,8 @@ class UserRouter extends EnduranceRouter {
         return;
       }
 
-      const allowedUpdates = ['name', 'email', 'password'];
+      // L'e-mail identifie le compte (invitations, liens de connexion) : il ne change pas sans vérification.
+      const allowedUpdates = ['name', 'password'];
       const updates = Object.keys(req.body);
 
       const isValidOperation = updates.every(update => allowedUpdates.includes(update));
